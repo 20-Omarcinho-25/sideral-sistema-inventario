@@ -1,5 +1,9 @@
 <?php
 // app/Models/MovimientoInventario.php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
 class MovimientoInventario extends Model {
     protected $table = 'movimiento_inventario';
     // ...

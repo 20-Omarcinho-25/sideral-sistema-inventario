@@ -1,6 +1,12 @@
 <?php
 // app/Modules/Core/VentaController.php
+namespace App\Modules\Core;
+
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use App\Models\Venta;
+use App\Models\Producto;
+use App\Http\Requests\StoreVentaRequest;
 
 class VentaController extends Controller {
 
