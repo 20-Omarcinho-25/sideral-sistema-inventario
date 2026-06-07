@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('nombre_cliente', 100);
             $table->string('dni_cliente', 15);
 
-            $table->unsignedBigInteger('id_usuario');
+             $table->char('id_usuario', 4);
 
             $table->foreign('id_usuario')
                 ->references('id_usuario')

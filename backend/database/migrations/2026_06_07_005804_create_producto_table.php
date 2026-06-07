@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('ubicacion', 100);
             $table->dateTime('fecha_registro');
 
-            $table->unsignedBigInteger('id_proveedor');
+            $table->char('id_proveedor', 4);
 
             $table->foreign('id_proveedor')
                 ->references('id_proveedor')
