@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('motivo', 255);
 
             $table->unsignedBigInteger('id_producto');
-            $table->unsignedBigInteger('id_usuario');
+            $table->char('id_usuario', 4);
 
             $table->foreign('id_producto')
                 ->references('id_producto')
