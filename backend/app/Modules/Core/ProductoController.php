@@ -1,5 +1,13 @@
 <?php
 // app/Modules/Core/ProductoController.php
+namespace App\Modules\Core;
+
+use App\Http\Controllers\Controller;
+use App\Models\Producto;
+use App\Http\Requests\StoreProductoRequest;
+use App\Http\Requests\UpdateProductoRequest;
+use Illuminate\Http\Request;
+
 class ProductoController extends Controller {
 
     /** GET /api/productos — Lista todos o filtra por nombre/marca */
