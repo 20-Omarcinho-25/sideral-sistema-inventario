@@ -10,31 +10,23 @@ use Illuminate\Http\Request;
 
 class ProductoController extends Controller {
 
-    /** GET /api/productos — Lista todos o filtra por nombre/marca */
-    public function index(Request $request) {
-        $query = Producto::with('proveedor');
-        if ($request->filled('search')) {
-            $q = $request->search;
-            $query->where('nombre','like',"%$q%")->orWhere('marca','like',"%$q%");
-        }
-        return response()->json($query->get());
-    }
+   public function index(Request $request) {
+        
+        $productos = Producto::with('proveedor')
+            // El método 'when' evalúa si existe 'search'. 
+            // Si es true, ejecuta la función anónima (cierre/closure) aplicando los wheres.
+            // Si es false, ignora la función anónima y sigue su camino.
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $query->where('nombre', 'like', "%{$request->search}%")
+                      ->orWhere('marca', 'like', "%{$request->search}%");
+            })
+            // Extrae los datos en bloques de 10 en 10
+            ->paginate(10); 
 
-    /** POST /api/productos — Registra nuevo producto */
-    public function store(StoreProductoRequest $request) {
-        $producto = Producto::create(array_merge(
-            $request->validated(),
-            ['id_producto' => uniqid('P'), 'fecha_registro' => now()]
-        ));
-        return response()->json($producto, 201);
+        return response()->json($productos);
     }
-
-    /** PUT /api/productos/{id} — Actualiza datos del producto */
-    public function update(UpdateProductoRequest $request, string $id) {
-        $producto = Producto::findOrFail($id);
-        $producto->update($request->validated());
-        return response()->json($producto);
-    }
+    
+    // ... el resto de tus funciones store y update quedan igual ...
 }
 
 // ─────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -11,23 +11,37 @@ interface Producto {
   ajuste: number;
 }
 
-const productosIniciales: Producto[] = [
-  { id: 1, codigo: 'L001', marca: 'ASUS', modelo: 'ASUS Vivobook 15', actual: 15, ajuste: 0 },
-  { id: 2, codigo: 'L002', marca: 'Apple', modelo: 'MacBook Air M2 13"', actual: 5, ajuste: 0 },
-  { id: 3, codigo: 'L003', marca: 'HP', modelo: 'HP Pavilion Gaming 15', actual: 0, ajuste: 0 },
-  { id: 4, codigo: 'L004', marca: 'Lenovo', modelo: 'Lenovo IdeaPad 3', actual: 25, ajuste: 0 },
-  { id: 5, codigo: 'L005', marca: 'Dell', modelo: 'Dell XPS 13', actual: 8, ajuste: 0 },
-  { id: 6, codigo: 'L006', marca: 'Acer', modelo: 'Acer Nitro 5', actual: 3, ajuste: 0 },
-  { id: 7, codigo: 'L007', marca: 'MSI', modelo: 'MSI Katana GF66', actual: 12, ajuste: 0 },
-  { id: 8, codigo: 'L008', marca: 'Huawei', modelo: 'Huawei MateBook D14', actual: 18, ajuste: 0 },
-  { id: 9, codigo: 'L009', marca: 'Samsung', modelo: 'Samsung Galaxy Book3', actual: 2, ajuste: 0 },
-  { id: 10, codigo: 'L010', marca: 'Microsoft', modelo: 'Microsoft Surface Laptop 5', actual: 0, ajuste: 0 },
-];
 
 export default function ActualizarStock() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [productos, setProductos] = useState<Producto[]>(productosIniciales);
-  const [filteredProductos, setFilteredProductos] = useState<Producto[]>(productosIniciales);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
+
+
+// 1. CARGA DINÁMICA
+  const fetchProductos = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/productos');
+      const data = await response.json();
+      const list = data.data ? data.data : data;
+      
+      // Agregamos la propiedad "ajuste" iniciada en 0 a la data real
+      const productosFormateados = list.map((p: any) => ({
+        ...p,
+        ajuste: 0
+      }));
+      
+      setProductos(productosFormateados);
+      setFilteredProductos(productosFormateados);
+    } catch (error) {
+      toast.error('Error al cargar inventario');
+    }
+  };
+
+  useEffect(() => {
+    fetchProductos();
+  }, []);
+
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -57,28 +71,35 @@ export default function ActualizarStock() {
   };
 
   const handleCancelar = () => {
-    setProductos(productosIniciales);
-    setFilteredProductos(productosIniciales);
+    setProductos([]);
+    setFilteredProductos([]);
     toast.info('Cambios cancelados');
   };
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     const cambios = productos.filter(p => p.ajuste !== 0);
     if (cambios.length === 0) {
       toast.error('No hay cambios para guardar');
       return;
     }
 
-    toast.success(`${cambios.length} producto(s) actualizados exitosamente`);
-    // Aquí aplicarías los ajustes al stock actual
-    const productosActualizados = productos.map(p => ({
-      ...p,
-      actual: p.actual + p.ajuste,
-      ajuste: 0
-    }));
-    setProductos(productosActualizados);
-    setFilteredProductos(productosActualizados);
-  };
+    try {
+      // Como pueden ser múltiples productos, usamos Promise.all para enviar varios PUT a Laravel
+      await Promise.all(cambios.map(async (prod) => {
+        const nuevoStock = prod.actual + prod.ajuste!;
+        return fetch(`http://localhost:8000/api/productos/${prod.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ stock_actual: nuevoStock })
+        });
+      }));
+
+      toast.success(`${cambios.length} producto(s) actualizados en la Base de Datos`);
+      fetchProductos(); // Volvemos a descargar todo fresco
+    } catch (error) {
+      toast.error('Ocurrió un error al actualizar los stocks');
+    }
+  };;
 
   return (
     <div>

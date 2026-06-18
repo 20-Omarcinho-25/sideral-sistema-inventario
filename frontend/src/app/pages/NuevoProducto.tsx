@@ -23,23 +23,47 @@ export default function NuevoProducto() {
     }));
   }, [codigoCounter]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Producto creado exitosamente');
-    setCodigoCounter(prev => prev + 1);
-    setFormData({
-      codigoUnico: '',
-      marca: '',
-      modelo: '',
-      numeroSerie: '',
-      stockInicial: '',
-      costoUnitario: '',
-      precioVenta: '',
-      proveedor: '',
-      ubicacion: '',
-    });
-  };
 
+    // 1. Mapeamos los campos del FrontEnd a los nombres exactos que espera la BD de Laravel
+    const payload = {
+      num_serie: formData.numeroSerie,
+      nombre: formData.modelo,      // Tu 'modelo' de Figma es el 'nombre' en Laravel
+      marca: formData.marca,
+      precio: parseFloat(formData.precioVenta), 
+      stock_actual: parseInt(formData.stockInicial),
+      stock_minimo: 5,              // Dato requerido por tu Request, lo definimos en 5 por defecto
+      id_proveedor: formData.proveedor, 
+    };
+
+    try {
+      // 2. Hacemos la petición POST a Laravel en caliente
+      const response = await fetch('http://localhost:8000/api/productos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        // Inserción exitosa en la base de datos MySQL
+        toast.success('Producto creado y guardado en la Base de Datos');
+        setCodigoCounter(prev => prev + 1);
+        handleCancel(); // Limpia el formulario
+      } else {
+        // Manejo de errores si fallan tus 3 validaciones de Laravel
+        const errorData = await response.json();
+        console.log("Errores de validación:", errorData);
+        toast.error('Error al crear: Verifica los datos (Ej: ID Proveedor debe existir)');
+      }
+    } catch (error) {
+      toast.error('Error fatal de conexión con el servidor de Laravel');
+    }
+  };
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -96,6 +120,8 @@ export default function NuevoProducto() {
                   value={formData.marca}
                   onChange={handleChange}
                   placeholder="Marca"
+                  maxLength={50}
+                  required
                   className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
                 />
               </div>
@@ -114,6 +140,8 @@ export default function NuevoProducto() {
                   value={formData.modelo}
                   onChange={handleChange}
                   placeholder="Modelo"
+                  maxLength={50}
+                  required
                   className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
                 />
               </div>
@@ -130,6 +158,8 @@ export default function NuevoProducto() {
                 value={formData.numeroSerie}
                 onChange={handleChange}
                 placeholder="Número de Serie"
+                maxLength={15}
+                  required
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
               />
             </div>
@@ -150,6 +180,8 @@ export default function NuevoProducto() {
                   value={formData.stockInicial}
                   onChange={handleChange}
                   placeholder="1"
+                  min="0"
+                  max="99999"
                   className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
                 />
               </div>
@@ -186,7 +218,9 @@ export default function NuevoProducto() {
                     step="0.01"
                     value={formData.precioVenta}
                     onChange={handleChange}
-                    placeholder="0"
+                    placeholder="0.00"
+                    min="0"
+                    max="99999"
                     className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
                   />
                 </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -9,41 +9,12 @@ interface Proveedor {
   telefono: string;
   correo: string;
   direccion: string;
-  estado: boolean;
+  estado: boolean | number;
 }
 
-const proveedoresEjemplo: Proveedor[] = [
-  {
-    id_proveedor: 'P001',
-    razon_social: 'Distribuidora Tech SAC',
-    ruc: '20123456789',
-    telefono: '987654321',
-    correo: 'ventas@distritech.com',
-    direccion: 'Av. Tecnología 123, Lima',
-    estado: true,
-  },
-  {
-    id_proveedor: 'P002',
-    razon_social: 'Importaciones Globales EIRL',
-    ruc: '20987654321',
-    telefono: '912345678',
-    correo: 'contacto@impglobal.com',
-    direccion: 'Jr. Comercio 456, Lima',
-    estado: true,
-  },
-  {
-    id_proveedor: 'P003',
-    razon_social: 'Electrónica del Perú SA',
-    ruc: '20456789123',
-    telefono: '965432187',
-    correo: 'info@electronicaperu.com',
-    direccion: 'Av. Industrial 789, Callao',
-    estado: false,
-  },
-];
 
 export default function GestionarProveedores() {
-  const [proveedores, setProveedores] = useState<Proveedor[]>(proveedoresEjemplo);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Proveedor>({
@@ -55,11 +26,24 @@ export default function GestionarProveedores() {
     direccion: '',
     estado: true,
   });
+// 2. CONSULTA EN CALIENTE: Traer proveedores de Laravel
+  const fetchProveedores = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/proveedores');
+      const data = await response.json();
+      setProveedores(data.data ? data.data : data); // Soporta si está paginado o no
+    } catch (error) {
+      toast.error('Error al conectar con la base de datos');
+    }
+  };
+  useEffect(() => {
+    fetchProveedores();
+  }, []);
 
   const handleAddNew = () => {
     const nextId = `P${String(proveedores.length + 1).padStart(3, '0')}`;
     setFormData({
-      id_proveedor: nextId,
+      id_proveedor: '',
       razon_social: '',
       ruc: '',
       telefono: '',
@@ -77,35 +61,73 @@ export default function GestionarProveedores() {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
-    setProveedores(proveedores.filter(p => p.id_proveedor !== id));
-    toast.success('Proveedor eliminado exitosamente');
+// 3. ELIMINAR EN CALIENTE
+  const handleDelete = async (id: string) => {
+    if(!confirm('¿Estás seguro de eliminar este proveedor?')) return;
+    
+    try {
+      const res = await fetch(`http://localhost:8000/api/proveedores/${id}`, { method: 'DELETE' });
+      if(res.ok) {
+        toast.success('Proveedor eliminado exitosamente');
+        fetchProveedores(); // Refrescar tabla
+      }
+    } catch (error) {
+      toast.error('Error al eliminar');
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 4. GUARDAR/ACTUALIZAR EN CALIENTE
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      setProveedores(proveedores.map(p => p.id_proveedor === editingId ? formData : p));
-      toast.success('Proveedor actualizado exitosamente');
-    } else {
-      setProveedores([...proveedores, formData]);
-      toast.success('Proveedor agregado exitosamente');
+    
+    const url = editingId 
+      ? `http://localhost:8000/api/proveedores/${editingId}` // PUT
+      : `http://localhost:8000/api/proveedores`; // POST
+      
+    const method = editingId ? 'PUT' : 'POST';
+
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        toast.success(editingId ? 'Actualizado en BD' : 'Guardado en BD');
+        setShowForm(false);
+        setEditingId(null);
+        fetchProveedores(); // Refrescar datos
+      } else {
+        const errorData = await response.json();
+        console.log(errorData);
+        toast.error('Error de validación en Laravel (Revisar RUC o campos)');
+      }
+    } catch (error) {
+      toast.error('Error de conexión');
     }
-    setShowForm(false);
-    setEditingId(null);
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
+    setFormData({
+      id_proveedor: '',
+      razon_social: '',
+      ruc: '',
+      telefono: '',
+      correo: '',
+      direccion: '',
+      estado: true,
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value,
-    });
+    }));
   };
 
   return (
@@ -234,7 +256,7 @@ export default function GestionarProveedores() {
                 id="estado"
                 name="estado"
                 type="checkbox"
-                checked={formData.estado}
+                checked={Boolean(formData.estado)}
                 onChange={handleChange}
                 className="w-4 h-4 rounded border-gray-300 text-[#1e6b3e] focus:ring-[#1e6b3e]"
               />

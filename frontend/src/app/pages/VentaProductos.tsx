@@ -1,9 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Trash2, Plus, Minus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Normalized product shape used by the UI
+interface ProductoDisponible {
+  id: string; // original id_producto
+  codigo: string; // same as id
+  marca: string;
+  modelo: string; // original nombre
+  precio: number; // original precio
+  stock: number; // original stock_actual
+}
+
 interface ItemVenta {
-  id: number;
+  id: string;
+  id_producto?: string;
   codigo: string;
   marca: string;
   modelo: string;
@@ -12,36 +23,37 @@ interface ItemVenta {
   subtotal: number;
 }
 
-interface ProductoDisponible {
-  id: number;
-  codigo: string;
-  marca: string;
-  modelo: string;
-  precio: number;
-}
-
-const productosDisponibles: ProductoDisponible[] = [
-  { id: 1, codigo: 'L001', marca: 'ASUS', modelo: 'ASUS Vivobook 15', precio: 2499 },
-  { id: 2, codigo: 'L002', marca: 'Apple', modelo: 'MacBook Air M2 13"', precio: 4800 },
-  { id: 3, codigo: 'L003', marca: 'HP', modelo: 'HP Pavilion Gaming 15', precio: 3200 },
-  { id: 4, codigo: 'L004', marca: 'Lenovo', modelo: 'Lenovo IdeaPad 3', precio: 1850 },
-  { id: 5, codigo: 'L005', marca: 'Dell', modelo: 'Dell XPS 13', precio: 5100 },
-  { id: 6, codigo: 'L006', marca: 'Acer', modelo: 'Acer Nitro 5', precio: 3550 },
-  { id: 7, codigo: 'L007', marca: 'MSI', modelo: 'MSI Katana GF66', precio: 4100 },
-  { id: 8, codigo: 'L008', marca: 'Huawei', modelo: 'Huawei MateBook D14', precio: 2200 },
-  { id: 9, codigo: 'L009', marca: 'Samsung', modelo: 'Samsung Galaxy Book3', precio: 3900 },
-  { id: 10, codigo: 'L010', marca: 'Microsoft', modelo: 'Microsoft Surface Laptop 5', precio: 4500 },
-];
-
 export default function VentaProductos() {
   const today = new Date().toISOString().split('T')[0];
-  const [codigoVenta, setCodigoVenta] = useState('V-' + Date.now());
+  const [codigoVenta, setCodigoVenta] = useState('Autogenerado por BD');
   const [fecha, setFecha] = useState(today);
   const [cliente, setCliente] = useState('');
   const [dniRuc, setDniRuc] = useState('');
+  
+  // ESTADOS DINÁMICOS
+  const [productosDisponibles, setProductosDisponibles] = useState<ProductoDisponible[]>([]);
   const [searchProducto, setSearchProducto] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [items, setItems] = useState<ItemVenta[]>([]);
+
+  // 1. TRAER CATÁLOGO EN CALIENTE
+  useEffect(() => {
+    fetch('http://localhost:8000/api/productos')
+      .then(res => res.json())
+      .then(data => {
+        const raw: any[] = data.data ? data.data : data;
+        const mapped: ProductoDisponible[] = raw.map(p => ({
+          id: String(p.id_producto ?? p.id ?? ''),
+          codigo: String(p.id_producto ?? p.id ?? ''),
+          marca: p.marca ?? '',
+          modelo: p.nombre ?? p.modelo ?? '',
+          precio: Number(p.precio ?? p.costoUnitario ?? 0),
+          stock: Number(p.stock_actual ?? p.stock ?? 0),
+        }));
+        setProductosDisponibles(mapped);
+      })
+      .catch(() => toast.error('Error cargando catálogo'));
+  }, []);
 
   const filteredProductos = searchProducto.trim()
     ? productosDisponibles.filter(p =>
@@ -51,104 +63,102 @@ export default function VentaProductos() {
       )
     : [];
 
-  const agregarProducto = (producto?: ProductoDisponible) => {
-    let productoSeleccionado = producto;
+  // Handlers: agregar, incrementar, decrementar, eliminar, calcular total, cancelar
+  function agregarProducto(producto?: ProductoDisponible) {
+    const p = producto ?? (filteredProductos.length ? filteredProductos[0] : undefined);
+    if (!p) return;
 
-    if (!productoSeleccionado) {
-      if (!searchProducto.trim()) {
-        toast.error('Ingrese un término de búsqueda');
-        return;
+    setItems(prev => {
+      const existing = prev.find(it => it.id === p.id);
+      if (existing) {
+        // increase quantity but do not exceed stock
+        const nuevaCantidad = Math.min(existing.cantidad + 1, p.stock);
+        return prev.map(it =>
+          it.id === p.id ? { ...it, cantidad: nuevaCantidad, subtotal: nuevaCantidad * it.costoUnitario } : it
+        );
       }
 
-      const searchTerm = searchProducto.toLowerCase();
-      productoSeleccionado = productosDisponibles.find(
-        p => p.codigo.toLowerCase().includes(searchTerm) ||
-             p.marca.toLowerCase().includes(searchTerm) ||
-             p.modelo.toLowerCase().includes(searchTerm)
-      );
-
-      if (!productoSeleccionado) {
-        toast.error('Laptop no encontrada. Intente con: código, marca o modelo');
-        return;
-      }
-    }
-
-    const itemExistente = items.find(item => item.codigo === productoSeleccionado!.codigo);
-
-    if (itemExistente) {
-      incrementarCantidad(itemExistente.id);
-      toast.success(`Cantidad de ${productoSeleccionado!.modelo} incrementada`);
-    } else {
-      const nuevoItem: ItemVenta = {
-        id: Date.now(),
-        codigo: productoSeleccionado!.codigo,
-        marca: productoSeleccionado!.marca,
-        modelo: productoSeleccionado!.modelo,
-        costoUnitario: productoSeleccionado!.precio,
+      const newItem: ItemVenta = {
+        id: p.id,
+        id_producto: p.id,
+        codigo: p.codigo,
+        marca: p.marca,
+        modelo: p.modelo,
+        costoUnitario: p.precio,
         cantidad: 1,
-        subtotal: productoSeleccionado!.precio
+        subtotal: p.precio,
       };
-      setItems([...items, nuevoItem]);
-      toast.success(`${productoSeleccionado!.modelo} agregada`);
-    }
+      return [...prev, newItem];
+    });
 
     setSearchProducto('');
     setShowSuggestions(false);
-  };
+  }
 
-  const incrementarCantidad = (id: number) => {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        const nuevaCantidad = item.cantidad + 1;
-        return { ...item, cantidad: nuevaCantidad, subtotal: nuevaCantidad * item.costoUnitario };
-      }
-      return item;
-    }));
-  };
+  function incrementarCantidad(itemId: string) {
+    setItems(prev => prev.map(it => (it.id === itemId ? { ...it, cantidad: it.cantidad + 1, subtotal: (it.cantidad + 1) * it.costoUnitario } : it)));
+  }
 
-  const decrementarCantidad = (id: number) => {
-    setItems(items.map(item => {
-      if (item.id === id && item.cantidad > 1) {
-        const nuevaCantidad = item.cantidad - 1;
-        return { ...item, cantidad: nuevaCantidad, subtotal: nuevaCantidad * item.costoUnitario };
-      }
-      return item;
-    }));
-  };
+  function decrementarCantidad(itemId: string) {
+    setItems(prev =>
+      prev
+        .map(it => (it.id === itemId ? { ...it, cantidad: Math.max(1, it.cantidad - 1), subtotal: Math.max(1, it.cantidad - 1) * it.costoUnitario } : it))
+    );
+  }
 
-  const eliminarItem = (id: number) => {
-    setItems(items.filter(item => item.id !== id));
-  };
+  function eliminarItem(itemId: string) {
+    setItems(prev => prev.filter(it => it.id !== itemId));
+  }
 
-  const calcularTotal = () => {
-    return items.reduce((sum, item) => sum + item.subtotal, 0);
-  };
+  function calcularTotal() {
+    return items.reduce((sum, it) => sum + it.subtotal, 0);
+  }
 
-  const handleCancelar = () => {
-    setCodigoVenta('V-' + Date.now());
-    setCliente('');
-    setDniRuc('');
+  function handleCancelar() {
     setItems([]);
-    toast.info('Venta cancelada');
+    setSearchProducto('');
+    setShowSuggestions(false);
+  }
+
+  // 2. REGISTRAR VENTA REAL EN LARAVEL
+  const handleRegistrarVenta = async () => {
+    if (items.length === 0) return toast.error('No hay productos en la venta');
+    if (!cliente.trim() || dniRuc.length !== 8) return toast.error('Ingrese nombre y un DNI válido (8 dígitos)');
+
+    // Construir Payload igual al StoreVentaRequest.php de Laravel
+    const payload = {
+      nombre_cliente: cliente,
+      dni_cliente: dniRuc,
+      productos: items.map(item => ({
+        id_producto: item.id_producto,
+        cantidad: item.cantidad
+      }))
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/api/ventas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        toast.success(`Venta registrada exitosamente en MySQL`);
+        setCliente('');
+        setDniRuc('');
+        setItems([]);
+        // Refrescar inventario si es necesario
+      } else {
+        const errorData = await response.json();
+        console.log("Error de Venta:", errorData);
+        toast.error('Error: ' + (errorData.message || 'Verifique los datos'));
+      }
+    } catch (error) {
+      toast.error('Fallo de conexión al servidor');
+    }
   };
 
-  const handleRegistrarVenta = () => {
-    if (items.length === 0) {
-      toast.error('No hay productos en la venta');
-      return;
-    }
-
-    if (!cliente.trim()) {
-      toast.error('Debe ingresar el nombre del cliente');
-      return;
-    }
-
-    toast.success(`Venta registrada exitosamente. Total: S/ ${calcularTotal().toFixed(2)}`);
-    setCodigoVenta('V-' + Date.now());
-    setCliente('');
-    setDniRuc('');
-    setItems([]);
-  };
+  // ... (EL RETURN SE MANTIENE IGUAL adaptando las variables nuevas) ...
 
   return (
     <div>
