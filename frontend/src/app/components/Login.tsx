@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import logoImage from '../../imports/Logo_AIReady.png';
+import logo_AIReady from '../../imports/Logo_AIReady.png';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,12 +10,31 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulación de login exitoso
-    if (username && password) {
+    if (!username || !password) return;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        console.error('Login failed', res.status);
+        return;
+      }
+
+      const data = await res.json(); // parse JSON response
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+      }
+
       localStorage.setItem('username', username);
       navigate('/dashboard');
+    } catch (err) {
+      console.error('Login error', err);
     }
   };
 
@@ -24,7 +43,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Green header with logo */}
         <div className="bg-[#1e6b3e] rounded-t-2xl pt-12 pb-8 px-8 flex justify-center">
-          <img src={logoImage} alt="AIReady" className="h-12" />
+          <img src={logo_AIReady} alt="AIReady" className="h-12" />
         </div>
 
         {/* White login card */}
