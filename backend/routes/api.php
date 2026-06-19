@@ -17,7 +17,13 @@ use App\Modules\Core\VentaController;
 */
 // Importa el controlador en la parte superior de tu api.php
 use App\Modules\Reports\ReporteController;
+// Agrégalos en la parte superior junto a los demás 'use'
+use App\Modules\Core\ProveedorController;
+use App\Modules\Security\UsuarioController;
 
+// Agrega esto debajo de tus otras rutas
+Route::apiResource('proveedores', ProveedorController::class);
+Route::apiResource('usuarios', UsuarioController::class);
 // Añade la ruta del reporte
 Route::get('/reportes/ventas/exportar', [ReporteController::class, 'exportarVentasCSV']);
 

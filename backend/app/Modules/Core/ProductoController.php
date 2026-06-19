@@ -10,15 +10,17 @@ use Illuminate\Http\Request;
 
 class ProductoController extends Controller {
 /** GET /api/productos — Lista todos o filtra por nombre/marca */
-    public function index(Request $request) {
-        // Enfoque simplista y operacional (Paginación + when)
+   public function index(Request $request) {
         $productos = Producto::with('proveedor')
+            ->where('estado', true) // <--- ESTA LÍNEA ES CLAVE (Filtra solo los activos)
             ->when($request->filled('search'), function ($query) use ($request) {
                 $q = $request->search;
-                $query->where('nombre', 'like', "%{$q}%")
-                      ->orWhere('marca', 'like', "%{$q}%");
+                $query->where(function($subQuery) use ($q) {
+                    $subQuery->where('nombre', 'like', "%{$q}%")
+                             ->orWhere('marca', 'like', "%{$q}%");
+                });
             })
-            ->paginate(10); // CRÍTICO: Reemplaza al ->get() para no saturar memoria
+            ->paginate(10); 
 
         return response()->json($productos);
     }
