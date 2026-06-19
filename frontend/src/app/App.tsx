@@ -1,24 +1,21 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
-import DashboardLayout from './components/DashboardLayout'; // <-- Tu Layout padre
-import DashboardHome from './pages/DashboardHome';       // <-- Tu vista principal
-// ... importa tus otras vistas (Proveedores, Ventas, etc.)
+import Login from './components/Login'; // Asegúrate de que las rutas de importación sean correctas
+import DashboardLayout from './components/DashboardLayout'; // La ruta al archivo que creamos arriba
+import DashboardHome from './pages/DashboardHome'; // La vista de los cuadros que tienes en tu foto
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta Pública */}
+        {/* Ruta Pública (El login ocupa toda la pantalla) */}
         <Route path="/" element={<Login />} />
 
-        {/* Rutas Privadas (Anidadas dentro del Layout) */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          {/* Al poner index, DashboardHome carga por defecto al entrar a /dashboard */}
-          <Route index element={<DashboardHome />} />
-          
-          {/* Aquí irán cayendo las demás ventanas de tu menú */}
-          {/* <Route path="proveedores" element={<Proveedores />} /> */}
-          {/* <Route path="ventas" element={<Ventas />} /> */}
+        {/* RUTAS PRIVADAS (Envueltas obligatoriamente en el Layout) */}
+        {/* Fíjate que el elemento principal es DashboardLayout, y las demás rutas van ADENTRO */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<DashboardHome />} />
+          {/* Aquí irás agregando tus demás pantallas */}
+          {/* <Route path="/proveedores" element={<Proveedores />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>
