@@ -62,17 +62,32 @@ export default function GestionarProveedores() {
   };
 
 // 3. ELIMINAR EN CALIENTE
+ // ELIMINACIÓN LÓGICA EN CALIENTE
   const handleDelete = async (id: string) => {
-    if(!confirm('¿Estás seguro de eliminar este proveedor?')) return;
+    // 1. Confirmación de seguridad
+    if(!window.confirm('¿Estás seguro de desactivar (eliminar lógicamente) este registro?')) return;
     
     try {
-      const res = await fetch(`http://localhost:8000/api/proveedores/${id}`, { method: 'DELETE' });
-      if(res.ok) {
-        toast.success('Proveedor eliminado exitosamente');
-        fetchProveedores(); // Refrescar tabla
+      // 2. Llamada al Backend
+      const response = await fetch(`http://localhost:8000/api/proveedores/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if(response.ok) {
+        toast.success('Registro desactivado exitosamente del sistema');
+        
+        // 3. ACTUALIZACIÓN EN CALIENTE O(1) - SIN LLAMAR A LA BASE DE DATOS OTRA VEZ
+        // Filtramos el arreglo de React para quitar visualmente el elemento eliminado
+        setProveedores(proveedoresAnteriores => 
+          proveedoresAnteriores.filter(proveedor => proveedor.id_proveedor !== id)
+        );
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Error al intentar desactivar el registro');
       }
     } catch (error) {
-      toast.error('Error al eliminar');
+      toast.error('Error crítico de conexión con el servidor');
     }
   };
 
