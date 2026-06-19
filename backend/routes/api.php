@@ -24,8 +24,11 @@ use App\Modules\Security\UsuarioController;
 // Agrega esto debajo de tus otras rutas
 Route::apiResource('proveedores', ProveedorController::class);
 Route::apiResource('usuarios', UsuarioController::class);
+
+
 // Añade la ruta del reporte
-Route::get('/reportes/ventas/exportar', [ReporteController::class, 'exportarVentasCSV']);
+// Módulo de Reportes
+Route::get('/reportes/ventas/exportar', [ReporteController::class, 'exportarVentasPDF']);
 
 Route::get('/dashboard/metricas', [\App\Modules\Core\DashboardController::class, 'metricas']);
 

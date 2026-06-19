@@ -20,7 +20,7 @@ class UpdateProductoRequest extends FormRequest
         'precio'       => 'sometimes|required|numeric|min:0.01|max:99999.99',
         'stock_actual' => 'sometimes|required|integer|min:0|max:999',
         'stock_minimo' => 'sometimes|required|integer|min:10|max:999',
-        'id_proveedor' => 'sometimes|required|string|max:15|exists:proveedor,id_proveedor',
+        'id_proveedor' => 'sometimes|required|string|max:4|exists:proveedor,id_proveedor',
     ];
 }
 }
