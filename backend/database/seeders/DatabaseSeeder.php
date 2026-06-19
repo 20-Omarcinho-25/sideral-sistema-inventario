@@ -16,18 +16,20 @@ class DatabaseSeeder extends Seeder
         // 1. Creamos el Rol de Administrador (para que no falle la llave foránea)
         DB::table('rol')->insert([
             'id_rol' => 1,
-            'nombre' => 'Administrador', // Cámbialo a 'nombre_rol' si tu migración usa ese nombre
+            'nombre_rol' => 'Administrador', // Cámbialo a 'nombre_rol' si tu migración usa ese nombre
         ]);
 
         // 2. Creamos al Superusuario Oficial con contraseña encriptada
         DB::table('usuario')->insert([
-            'nombre'        => 'Admin',
+            'id_usuario'    => 1,
+        'nombre'        => 'Admin',
             'apellido'      => 'Sideral',
             'username'      => 'admin',
             'correo'        => 'admin@sideral.com',
             'password_hash' => Hash::make('123456'), // Contraseña obligatoria: 123456
             'id_rol'        => 1,
-            'estado'        => true
+            'estado'        => true,
+            'fecha_registro' => now(),
         ]);
     }
 }

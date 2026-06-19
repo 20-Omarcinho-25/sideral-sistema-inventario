@@ -7,8 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class Usuario extends Authenticatable
-{
+class Usuario extends Authenticatable{
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'usuario';
@@ -63,6 +62,9 @@ class Usuario extends Authenticatable
      */
     public function esVendedor(): bool
     {
-        return $this->rol && (strtolower($this->rol->nombre_rol) === 'vendedor' || $this->rol->id_rol === 'R002');
+        if ($this->rol) {
+            return strtolower($this->rol->nombre_rol) === 'vendedor' || $this->rol->id_rol === 'R002';
+        }
+        return false;
     }
 }
