@@ -15,18 +15,25 @@ export default function Login() {
     if (!username || !password) return;
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+     // FORMA CORRECTA DE CONECTAR EN CALIENTE
+const response = await fetch('http://127.0.0.1:8000/api/login', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+        username: username,
+        password: password
+    })
+});
 
-      if (!res.ok) {
-        console.error('Login failed', res.status);
+      if (!response.ok) {
+        console.error('Login failed', response.status);
         return;
       }
 
-      const data = await res.json(); // parse JSON response
+      const data = await response.json(); // parse JSON response
       if (data?.token) {
         localStorage.setItem('token', data.token);
       }
@@ -51,6 +58,7 @@ export default function Login() {
           <h2 className="text-center text-2xl mb-6">Iniciar Sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            
             {/* Username field */}
             <div>
               <label htmlFor="username" className="block text-sm text-gray-600 mb-1">
