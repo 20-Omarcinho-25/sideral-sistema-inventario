@@ -16,15 +16,17 @@ class AuthController extends Controller
      */
     public function login(Request $request): \Illuminate\Http\JsonResponse
     {
+        // 1. Añadimos validación de longitud máxima por seguridad operacional
         $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
+            'username' => 'required|string|max:50',
+            'password' => 'required|string|max:255',
         ]);
 
         $usuario = Usuario::where('username', $request->username)
             ->orWhere('correo', $request->username)
             ->first();
 
+        // 2. Lógica de validación con Hash (Se mantiene igual, ya está bien construida)
         if (!$usuario || !Hash::check($request->password, $usuario->password_hash)) {
             throw ValidationException::withMessages([
                 'username' => ['Credenciales incorrectas.'],
@@ -35,7 +37,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Usuario inactivo.'], 403);
         }
 
-        // Elimina tokens anteriores y emite uno nuevo
+        // 3. Elimina tokens anteriores y emite uno nuevo
         $usuario->tokens()->delete();
         $token = $usuario->createToken('aiready-token')->plainTextToken;
 

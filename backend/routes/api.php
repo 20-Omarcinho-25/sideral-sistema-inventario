@@ -15,7 +15,15 @@ use App\Modules\Core\VentaController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+// Importa el controlador en la parte superior de tu api.php
+use App\Modules\Reports\ReporteController;
 
+// Añade la ruta del reporte
+Route::get('/reportes/ventas/exportar', [ReporteController::class, 'exportarVentasCSV']);
+
+Route::get('/dashboard/metricas', [\App\Modules\Core\DashboardController::class, 'metricas']);
+
+Route::put('/productos/{id}/stock', [\App\Modules\Core\ProductoController::class, 'actualizarStock']);
 // ── Rutas Públicas (Sin Autenticación) ──────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
 

@@ -1,118 +1,100 @@
-import { Download, FileText } from 'lucide-react';
-import logoAIReady from '../../imports/Logo_AIReady.png';
+import { useState } from 'react';
+import { FileText, Download, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface ProductoInventario {
-  id: string;
-  producto: string;
-  categoria: string;
-  precioUnitario: number;
-  stock: number;
-  estado: 'Disponible' | 'Stock Bajo' | 'Agotado';
-}
+export default function Reportes() {
+  // Estado para controlar el botón mientras Laravel genera el PDF
+  const [descargando, setDescargando] = useState(false);
 
-const inventario: ProductoInventario[] = [
-  { id: 'L001', producto: 'Laptop ASUS Vivobook 15', categoria: 'Estándar', precioUnitario: 2499, stock: 15, estado: 'Disponible' },
-  { id: 'L002', producto: 'MacBook Air M2 13"', categoria: 'Premium', precioUnitario: 4800, stock: 5, estado: 'Stock Bajo' },
-  { id: 'L003', producto: 'HP Pavilion Gaming 15', categoria: 'Gaming', precioUnitario: 3200, stock: 0, estado: 'Agotado' },
-  { id: 'L004', producto: 'Lenovo IdeaPad 3', categoria: 'Estándar', precioUnitario: 1850, stock: 25, estado: 'Disponible' },
-  { id: 'L005', producto: 'Dell XPS 13', categoria: 'Ultrabook', precioUnitario: 5100, stock: 8, estado: 'Disponible' },
-  { id: 'L006', producto: 'Acer Nitro 5', categoria: 'Gaming', precioUnitario: 3550, stock: 3, estado: 'Stock Bajo' },
-  { id: 'L007', producto: 'MSI Katana GF66', categoria: 'Gaming', precioUnitario: 4100, stock: 12, estado: 'Disponible' },
-  { id: 'L008', producto: 'Laptop Huawei MateBook D14', categoria: 'Oficina', precioUnitario: 2200, stock: 18, estado: 'Disponible' },
-  { id: 'L009', producto: 'Samsung Galaxy Book3', categoria: 'Ultrabook', precioUnitario: 3900, stock: 2, estado: 'Stock Bajo' },
-  { id: 'L010', producto: 'Microsoft Surface Laptop 5', categoria: 'Premium', precioUnitario: 4500, stock: 0, estado: 'Agotado' },
-];
+  // Función 100% EN CALIENTE para consumir el endpoint
+  const handleDescargarPDF = async () => {
+    setDescargando(true);
+    toast.info('Solicitando PDF al servidor. Esto puede tomar unos segundos...');
 
-export default function Reporte() {
-  const today = new Date();
-  const fechaEmision = today.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+    try {
+      // 1. Petición HTTP GET al controlador ReporteController de Laravel
+      const response = await fetch('http://localhost:8000/api/reportes/ventas/exportar', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf', // Le decimos al backend que esperamos un binario PDF
+          // IMPORTANTE: Si implementaron Sanctum para proteger las rutas, descomenta la siguiente línea:
+          // 'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        }
+      });
 
-  const exportarPDF = () => {
-    window.print();
-  };
+      if (!response.ok) {
+        throw new Error('Fallo en la comunicación con la Base de Datos');
+      }
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'Disponible':
-        return 'bg-green-100 text-green-800';
-      case 'Stock Bajo':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Agotado':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      // 2. Procesamiento del Archivo Binario (Blob)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // 3. Creación de un enlace temporal ancla <a> en el DOM
+      const a = document.createElement('a');
+      a.href = url;
+
+      // 4. Nombre dinámico del archivo
+      const fechaActual = new Date().toISOString().slice(0, 10);
+      a.download = `Sideral_Reporte_Ventas_${fechaActual}.pdf`;
+
+      // 5. Ejecutar la descarga y limpiar memoria
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('¡Reporte PDF descargado con éxito!');
+      
+    } catch (error) {
+      console.error("Error al descargar:", error);
+      toast.error('Ocurrió un error al generar el documento. Revise la consola del servidor.');
+    } finally {
+      setDescargando(false);
     }
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6 print:hidden">
-        <h1 className="text-2xl text-gray-800">Reporte de Inventario</h1>
-        <button
-          onClick={exportarPDF}
-          className="px-6 py-2.5 bg-[#1e6b3e] hover:bg-[#165530] text-white rounded-md transition-colors flex items-center gap-2"
-        >
-          <Download size={18} />
-          Generar PDF
-        </button>
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <h1 className="text-2xl font-bold text-gray-800">Módulo de Reportes</h1>
       </div>
 
-      {/* Reporte */}
-      <div className="bg-white rounded-lg shadow-md p-8 print:shadow-none print:rounded-none">
-        {/* Header del reporte */}
-        <div className="mb-6 text-center">
-          <img src={logoAIReady} alt="AIReady Logo" className="h-16 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-[#2c5f4f] mb-2">ALREADY - REPORTE DE INVENTARIO</h1>
-          <p className="text-gray-600">Sideral Carrión IT | Gestión de Laptops</p>
-          <div className="h-1 bg-gray-300 mt-4 mb-6"></div>
-        </div>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex flex-col md:flex-row items-start gap-6">
+          
+          {/* Icono decorativo */}
+          <div className="p-4 bg-red-50 text-red-600 rounded-xl shrink-0">
+            <FileText size={32} />
+          </div>
+          
+          {/* Contenido e Información */}
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold text-gray-800">Reporte Histórico de Ventas</h2>
+            <p className="text-sm text-gray-600 mt-2 mb-6 leading-relaxed">
+              Exporte un documento oficial en formato <span className="font-semibold">PDF</span> con el registro consolidado de todas las transacciones procesadas. 
+              Este reporte extrae los datos en tiempo real desde el motor MySQL, garantizando que la información financiera y de inventario sea precisa al segundo exacto de la descarga.
+            </p>
 
-        {/* Información del reporte */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-6">
-          <p className="text-sm text-gray-700">
-            <span className="font-semibold">Fecha de emisión:</span> {fechaEmision} |
-            <span className="font-semibold"> Generado por:</span> Sistema AIReady |
-            <span className="font-semibold"> Almacén:</span> Central Wilson
-          </p>
-        </div>
-
-        {/* Tabla de inventario */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#3d4d5c] text-white">
-                <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">PRODUCTO</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">CATEGORÍA</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold">PRECIO UNIT.</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold">STOCK</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold">ESTADO</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {inventario.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.id}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.producto}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{item.categoria}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-right">S/ {item.precioUnitario.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-center">{item.stock}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-block px-3 py-1 rounded text-xs font-semibold ${getEstadoColor(item.estado)}`}>
-                      {item.estado}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-gray-200">
-          <p className="text-center text-sm text-gray-500">
-            Este documento es un reporte oficial generado por el sistema de gestión AIReady.
-          </p>
+            {/* Controles de Acción */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleDescargarPDF}
+                disabled={descargando}
+                className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
+              >
+                <Download size={20} />
+                {descargando ? 'Compilando Documento...' : 'Descargar Reporte (PDF)'}
+              </button>
+              
+              {/* Indicador visual de procesamiento */}
+              {descargando && (
+                <span className="text-sm text-blue-600 flex items-center gap-2 animate-pulse">
+                  <AlertCircle size={18} /> Operación en proceso...
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

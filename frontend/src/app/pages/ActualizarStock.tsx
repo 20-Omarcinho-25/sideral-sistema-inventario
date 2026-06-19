@@ -9,6 +9,7 @@ interface Producto {
   modelo: string;
   actual: number;
   ajuste: number;
+  stock_actual: number; // Stock actual desde el backend para referencia en cálculos de ajuste
 }
 
 
@@ -76,30 +77,52 @@ export default function ActualizarStock() {
     toast.info('Cambios cancelados');
   };
 
+ // 2. ACTUALIZACIÓN EN CALIENTE CON TRAZABILIDAD (PUT a Laravel)
   const handleGuardar = async () => {
     const cambios = productos.filter(p => p.ajuste !== 0);
     if (cambios.length === 0) {
-      toast.error('No hay cambios para guardar');
+      toast.error('No hay cambios de stock para guardar');
+      return;
+    }
+
+    // Pedimos al usuario una justificación (Requisito clave de auditoría)
+    const motivoAjuste = window.prompt("Por favor, ingrese el motivo del ajuste (Ej: 'Inventario físico', 'Merma por daño'):");
+    
+    if (!motivoAjuste || motivoAjuste.trim() === '') {
+      toast.error('Operación cancelada: El motivo es obligatorio para auditoría');
       return;
     }
 
     try {
-      // Como pueden ser múltiples productos, usamos Promise.all para enviar varios PUT a Laravel
+      // Usamos Promise.all para enviar múltiples transacciones atómicas al mismo tiempo
       await Promise.all(cambios.map(async (prod) => {
-        const nuevoStock = prod.actual + prod.ajuste!;
-        return fetch(`http://localhost:8000/api/productos/${prod.id}`, {
+        const nuevoStock = prod.stock_actual + prod.ajuste!;
+        
+        // Armamos el Payload exacto que el Backend exige ahora
+        const payload = {
+          nuevo_stock: nuevoStock,
+          ajuste: prod.ajuste,
+          motivo: motivoAjuste
+        };
+
+        return fetch(`http://localhost:8000/api/productos/${prod.id}/stock`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ stock_actual: nuevoStock })
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Accept': 'application/json',
+            // Ojo: Aquí deberías pasar el token Bearer si ya tienes implementado el Auth
+            // 'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          },
+          body: JSON.stringify(payload)
         });
       }));
 
-      toast.success(`${cambios.length} producto(s) actualizados en la Base de Datos`);
-      fetchProductos(); // Volvemos a descargar todo fresco
+      toast.success(`${cambios.length} producto(s) actualizados y registrados en Auditoría`);
+      fetchProductos(); // Volvemos a descargar el stock fresco
     } catch (error) {
-      toast.error('Ocurrió un error al actualizar los stocks');
+      toast.error('Fallo de conexión al guardar los ajustes de stock');
     }
-  };;
+  };
 
   return (
     <div>

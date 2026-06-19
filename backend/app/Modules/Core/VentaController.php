@@ -1,43 +1,88 @@
 <?php
-// app/Modules/Core/VentaController.php
+
 namespace App\Modules\Core;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // <- CRÍTICO PARA LA ESTABILIDAD
 use App\Models\Venta;
+use App\Models\DetalleVenta;
 use App\Models\Producto;
 use App\Http\Requests\StoreVentaRequest;
 
-class VentaController extends Controller {
+class VentaController extends Controller
+{
+  /** GET /api/ventas - Lista paginada con sus detalles y productos */
+    public function index()
+    {
+        // El método with() hace que el rendimiento sea óptimo (Evita el problema N+1)
+        $ventas = Venta::with(['detalles.producto'])
+            ->orderBy('fecha_venta', 'desc')
+            ->paginate(10);
 
-    /**
-     * POST /api/ventas
-     * Crea la venta con sus detalles en una transaccion atomica.
-     * Al finalizar, dispara VentaFinalizada -> Observer descuenta stock.
-     */
-    public function store(StoreVentaRequest $request) {
-        return DB::transaction(function () use ($request) {
-            $venta = Venta::create([
-                'id_venta'       => uniqid('V'),
-                'fecha_venta'    => now(),
-                'estado'         => 'Pendiente',
-                'nombre_cliente' => $request->nombre_cliente,
-                'dni_cliente'    => $request->dni_cliente,
-                'id_usuario'     => auth()->id(),
-                'total'          => 0,
-            ]);
-
-            foreach ($request->productos as $item) {
-                $producto = Producto::findOrFail($item['id_producto']);
-                $venta->agregarDetalle($producto, $item['cantidad']);
-            }
-
-            $venta->total = $venta->calcularTotalVenta($venta->detalles->toArray());
-            $venta->finalizarVenta(auth()->user());
-
-            return response()->json($venta->load('detalles'), 201);
-        });
+        return response()->json($ventas);
     }
-}
+    /** POST /api/ventas - Registra venta y descuenta stock dinámicamente */
+    public function store(StoreVentaRequest $request)
+    {
+        try {
+            // Iniciamos la Transacción: Si una línea falla, todo se revierte (Rollback)
+            $venta = DB::transaction(function () use ($request) {
+                
+                // 1. Crear la cabecera de la Venta
+                $nuevaVenta = Venta::create([
+                    'nombre_cliente' => $request->nombre_cliente,
+                    'dni_cliente'    => $request->dni_cliente,
+                    'fecha_venta'    => now(),
+                    'total'          => 0, // Inicia en 0, lo sumaremos en el bucle
+                    'estado'         => 'Completada',
+                ]);
 
+                $totalVenta = 0;
 
+                // 2. Procesar cada producto enviado desde el Frontend (React)
+                foreach ($request->productos as $item) {
+                    // lockForUpdate(): Bloquea la fila en MySQL temporalmente para evitar ventas duplicadas simultáneas
+                    $producto = Producto::lockForUpdate()->findOrFail($item['id_producto']);
+                    
+                    // Validación en caliente: ¿Hay stock suficiente?
+                    if ($producto->stock_actual < $item['cantidad']) {
+                        throw new \Exception('Stock insuficiente para la laptop: ' . $producto->nombre);
+                    }
+
+                    $subtotal = $producto->precio * $item['cantidad'];
+                    $totalVenta += $subtotal;
+
+                    // 3. Crear el Detalle de la Venta
+                    DetalleVenta::create([
+                        'id_venta'        => $nuevaVenta->id_venta, 
+                        'id_producto'     => $producto->id_producto,
+                        'cantidad'        => $item['cantidad'],
+                        'precio_unitario' => $producto->precio,
+                        'subtotal'        => $subtotal,
+                    ]);
+
+                    // 4. Descontar el stock actual de la base de datos
+                    $producto->decrement('stock_actual', $item['cantidad']);
+                }
+
+                // 5. Actualizar la Venta con el Total calculado real
+                $nuevaVenta->update(['total' => $totalVenta]);
+
+                return $nuevaVenta;
+            });
+
+            // Si llegamos aquí, la transacción fue un éxito total en MySQL
+            return response()->json([
+                'message' => 'Venta registrada con éxito y stock descontado', 
+                'data' => $venta
+            ], 201);
+
+        } catch (\Exception $e) {
+            // Si falta stock o cae la red, se captura el error y se envía al Frontend
+            return response()->json([
+                'message' => 'La venta ha sido cancelada por estabilidad del sistema: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+}  // ... aquí irán los siguientes pedazos de código ...
