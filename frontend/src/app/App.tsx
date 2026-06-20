@@ -1,23 +1,33 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Login from './components/Login'; // Asegúrate de que las rutas de importación sean correctas
-import DashboardLayout from './components/DashboardLayout'; // La ruta al archivo que creamos arriba
-import DashboardHome from './pages/DashboardHome'; // La vista de los cuadros que tienes en tu foto
+import { Toaster } from 'sonner';
+
+import Login from './components/Login';
+import DashboardLayout from './components/DashboardLayout';
+import DashboardHome from './pages/DashboardHome';
+import GestionarProveedores from './pages/GestionarProveedores';
+import Reportes from './pages/Reporte';
+import BuscarProducto from './pages/BuscarProducto';
+import NuevoProducto from './pages/NuevoProducto';
+import ActualizarStock from './pages/ActualizarStock';
+import VentaProductos from './pages/VentaProductos';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta Pública (El login ocupa toda la pantalla) */}
         <Route path="/" element={<Login />} />
 
-        {/* RUTAS PRIVADAS (Envueltas obligatoriamente en el Layout) */}
-        {/* Fíjate que el elemento principal es DashboardLayout, y las demás rutas van ADENTRO */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHome />} />
-          {/* Aquí irás agregando tus demás pantallas */}
-          {/* <Route path="/proveedores" element={<Proveedores />} /> */}
+          <Route path="/proveedores" element={<GestionarProveedores />} />
+          <Route path="/reportes" element={<Reportes />} />
+          <Route path="/productos" element={<BuscarProducto />} />
+          <Route path="/productos/nuevo" element={<NuevoProducto />} />
+          <Route path="/productos/stock" element={<ActualizarStock />} />
+          <Route path="/ventas" element={<VentaProductos />} />
         </Route>
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

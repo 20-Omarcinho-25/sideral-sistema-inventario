@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Edit, Trash2 } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 // 1. Actualizamos la interfaz para que coincida exactamente con los campos de tu base de datos (Laravel)
 interface Producto {
@@ -21,11 +22,11 @@ export default function BuscarProducto() {
     setCargando(true);
     try {
       // Llamamos a la API. Si hay búsqueda, Laravel la procesará con su método when()
-      const url = busqueda 
-        ? `http://localhost:8000/api/productos?search=${busqueda}`
-        : 'http://localhost:8000/api/productos';
-        
-      const response = await fetch(url);
+      const url = busqueda
+        ? `/productos?search=${encodeURIComponent(busqueda)}`
+        : '/productos';
+
+      const response = await apiFetch(url);
       const json = await response.json();
       
       // Si usaste ->paginate(10) en Laravel, extraemos json.data. Si usaste ->get(), es solo json

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '../lib/api';
 
 interface Producto {
   id: number;
@@ -9,32 +10,41 @@ interface Producto {
   modelo: string;
   actual: number;
   ajuste: number;
-  stock_actual: number; // Stock actual desde el backend para referencia en cálculos de ajuste
+  stock_actual: number;
 }
 
+interface ProductoApi {
+  id_producto: number;
+  codigo_producto?: string;
+  marca: string;
+  nombre: string;
+  stock_actual: number;
+}
 
 export default function ActualizarStock() {
   const [searchTerm, setSearchTerm] = useState('');
   const [productos, setProductos] = useState<Producto[]>([]);
   const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
 
-
-// 1. CARGA DINÁMICA
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/productos');
+      const response = await apiFetch('/productos');
       const data = await response.json();
-      const list = data.data ? data.data : data;
-      
-      // Agregamos la propiedad "ajuste" iniciada en 0 a la data real
-      const productosFormateados = list.map((p: any) => ({
-        ...p,
-        ajuste: 0
+      const list: ProductoApi[] = data.data ? data.data : data;
+
+      const productosFormateados = list.map((p) => ({
+        id: p.id_producto,
+        codigo: p.codigo_producto ?? String(p.id_producto),
+        marca: p.marca,
+        modelo: p.nombre,
+        actual: p.stock_actual,
+        stock_actual: p.stock_actual,
+        ajuste: 0,
       }));
-      
+
       setProductos(productosFormateados);
       setFilteredProductos(productosFormateados);
-    } catch (error) {
+    } catch {
       toast.error('Error al cargar inventario');
     }
   };
@@ -42,7 +52,6 @@ export default function ActualizarStock() {
   useEffect(() => {
     fetchProductos();
   }, []);
-
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -60,24 +69,22 @@ export default function ActualizarStock() {
   };
 
   const handleActualChange = (id: number, value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = parseInt(value, 10) || 0;
     setProductos(productos.map(p => p.id === id ? { ...p, actual: numValue } : p));
     setFilteredProductos(filteredProductos.map(p => p.id === id ? { ...p, actual: numValue } : p));
   };
 
   const handleAjusteChange = (id: number, value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = parseInt(value, 10) || 0;
     setProductos(productos.map(p => p.id === id ? { ...p, ajuste: numValue } : p));
     setFilteredProductos(filteredProductos.map(p => p.id === id ? { ...p, ajuste: numValue } : p));
   };
 
   const handleCancelar = () => {
-    setProductos([]);
-    setFilteredProductos([]);
+    fetchProductos();
     toast.info('Cambios cancelados');
   };
 
- // 2. ACTUALIZACIÓN EN CALIENTE CON TRAZABILIDAD (PUT a Laravel)
   const handleGuardar = async () => {
     const cambios = productos.filter(p => p.ajuste !== 0);
     if (cambios.length === 0) {
@@ -85,41 +92,37 @@ export default function ActualizarStock() {
       return;
     }
 
-    // Pedimos al usuario una justificación (Requisito clave de auditoría)
     const motivoAjuste = window.prompt("Por favor, ingrese el motivo del ajuste (Ej: 'Inventario físico', 'Merma por daño'):");
-    
+
     if (!motivoAjuste || motivoAjuste.trim() === '') {
       toast.error('Operación cancelada: El motivo es obligatorio para auditoría');
       return;
     }
 
     try {
-      // Usamos Promise.all para enviar múltiples transacciones atómicas al mismo tiempo
-      await Promise.all(cambios.map(async (prod) => {
-        const nuevoStock = prod.stock_actual + prod.ajuste!;
-        
-        // Armamos el Payload exacto que el Backend exige ahora
+      const results = await Promise.all(cambios.map(async (prod) => {
+        const nuevoStock = prod.stock_actual + prod.ajuste;
         const payload = {
           nuevo_stock: nuevoStock,
           ajuste: prod.ajuste,
-          motivo: motivoAjuste
+          motivo: motivoAjuste,
         };
 
-        return fetch(`http://localhost:8000/api/productos/${prod.id}/stock`, {
+        return apiFetch(`/productos/${prod.id}/stock`, {
           method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Accept': 'application/json',
-            // Ojo: Aquí deberías pasar el token Bearer si ya tienes implementado el Auth
-            // 'Authorization': `Bearer ${localStorage.getItem('token')}` 
-          },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
       }));
 
-      toast.success(`${cambios.length} producto(s) actualizados y registrados en Auditoría`);
-      fetchProductos(); // Volvemos a descargar el stock fresco
-    } catch (error) {
+      const fallidos = results.filter(r => !r.ok);
+      if (fallidos.length > 0) {
+        toast.error(`${fallidos.length} ajuste(s) no se pudieron guardar`);
+      } else {
+        toast.success(`${cambios.length} producto(s) actualizados y registrados en Auditoría`);
+      }
+
+      fetchProductos();
+    } catch {
       toast.error('Fallo de conexión al guardar los ajustes de stock');
     }
   };
@@ -128,7 +131,6 @@ export default function ActualizarStock() {
     <div>
       <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase">Actualizar Stock</h2>
 
-      {/* Search Bar */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -142,7 +144,6 @@ export default function ActualizarStock() {
         </div>
       </div>
 
-      {/* Stock Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -183,7 +184,6 @@ export default function ActualizarStock() {
           </table>
         </div>
 
-        {/* Action Buttons */}
         <div className="p-4 border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={handleCancelar}

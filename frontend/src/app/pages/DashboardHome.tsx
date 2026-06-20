@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, AlertTriangle, Users, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '../lib/api';
 
 interface Metricas {
   ventas_mes: number;
@@ -23,10 +24,7 @@ export default function DashboardHome() {
   useEffect(() => {
     const fetchMetricas = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/dashboard/metricas', {
-          headers: { 'Accept': 'application/json' }
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}` // Descomentar si usan auth
-        });
+        const response = await apiFetch('/dashboard/metricas');
         
         if (response.ok) {
           const data = await response.json();

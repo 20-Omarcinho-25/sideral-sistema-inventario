@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '../lib/api';
 
 interface Proveedor {
   id_proveedor: string;
@@ -29,7 +30,7 @@ export default function GestionarProveedores() {
 // 2. CONSULTA EN CALIENTE: Traer proveedores de Laravel
   const fetchProveedores = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/proveedores');
+      const response = await apiFetch('/proveedores');
       const data = await response.json();
       setProveedores(data.data ? data.data : data); // Soporta si está paginado o no
     } catch (error) {
@@ -69,9 +70,8 @@ export default function GestionarProveedores() {
     
     try {
       // 2. Llamada al Backend
-      const response = await fetch(`http://localhost:8000/api/proveedores/${id}`, { 
+      const response = await apiFetch(`/proveedores/${id}`, {
         method: 'DELETE',
-        headers: { 'Accept': 'application/json' }
       });
       
       if(response.ok) {
@@ -95,17 +95,13 @@ export default function GestionarProveedores() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const url = editingId 
-      ? `http://localhost:8000/api/proveedores/${editingId}` // PUT
-      : `http://localhost:8000/api/proveedores`; // POST
-      
+    const path = editingId ? `/proveedores/${editingId}` : '/proveedores';
     const method = editingId ? 'PUT' : 'POST';
 
     try {
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(formData)
+      const response = await apiFetch(path, {
+        method,
+        body: JSON.stringify(formData),
       });
 
       if (response.ok) {

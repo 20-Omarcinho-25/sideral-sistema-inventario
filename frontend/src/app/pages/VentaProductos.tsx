@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Trash2, Plus, Minus, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '../lib/api';
 
 // Normalized product shape used by the UI
 interface ProductoDisponible {
@@ -38,16 +39,16 @@ export default function VentaProductos() {
 
   // 1. TRAER CATÁLOGO EN CALIENTE
   useEffect(() => {
-    fetch('http://localhost:8000/api/productos')
+    apiFetch('/productos')
       .then(res => res.json())
       .then(data => {
-        const raw: any[] = data.data ? data.data : data;
+        const raw: Record<string, unknown>[] = data.data ? data.data : data;
         const mapped: ProductoDisponible[] = raw.map(p => ({
           id: String(p.id_producto ?? p.id ?? ''),
-          codigo: String(p.id_producto ?? p.id ?? ''),
-          marca: p.marca ?? '',
-          modelo: p.nombre ?? p.modelo ?? '',
-          precio: Number(p.precio ?? p.costoUnitario ?? 0),
+          codigo: String(p.codigo_producto ?? p.id_producto ?? p.id ?? ''),
+          marca: String(p.marca ?? ''),
+          modelo: String(p.nombre ?? p.modelo ?? ''),
+          precio: Number(p.precio ?? 0),
           stock: Number(p.stock_actual ?? p.stock ?? 0),
         }));
         setProductosDisponibles(mapped);
@@ -130,16 +131,15 @@ export default function VentaProductos() {
       nombre_cliente: cliente,
       dni_cliente: dniRuc,
       productos: items.map(item => ({
-        id_producto: item.id_producto,
-        cantidad: item.cantidad
-      }))
+        id_producto: Number(item.id_producto),
+        cantidad: item.cantidad,
+      })),
     };
 
     try {
-      const response = await fetch('http://localhost:8000/api/ventas', {
+      const response = await apiFetch('/ventas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {

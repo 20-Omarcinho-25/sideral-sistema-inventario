@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileText, Download, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_BASE, getAuthHeaders } from '../lib/api';
 
 export default function Reportes() {
   // Estado para controlar el botón mientras Laravel genera el PDF
@@ -13,13 +14,12 @@ export default function Reportes() {
 
     try {
       // 1. Petición HTTP GET al controlador ReporteController de Laravel
-      const response = await fetch('http://localhost:8000/api/reportes/ventas/exportar', {
+      const response = await fetch(`${API_BASE}/reportes/ventas/exportar`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/pdf', // Le decimos al backend que esperamos un binario PDF
-          // IMPORTANTE: Si implementaron Sanctum para proteger las rutas, descomenta la siguiente línea:
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        }
+          ...getAuthHeaders(false),
+          Accept: 'application/pdf',
+        },
       });
 
       if (!response.ok) {

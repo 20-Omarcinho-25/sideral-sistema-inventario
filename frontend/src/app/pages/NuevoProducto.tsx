@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '../lib/api';
+
+interface ProveedorOption {
+  id_proveedor: string;
+  razon_social: string;
+}
 
 export default function NuevoProducto() {
   const [codigoCounter, setCodigoCounter] = useState(11);
@@ -16,6 +22,8 @@ export default function NuevoProducto() {
     ubicacion: '',
   });
 
+  const [proveedores, setProveedores] = useState<ProveedorOption[]>([]);
+
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
@@ -23,29 +31,39 @@ export default function NuevoProducto() {
     }));
   }, [codigoCounter]);
 
+  useEffect(() => {
+    apiFetch('/proveedores')
+      .then(res => res.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : data.data ?? [];
+        setProveedores(list);
+      })
+      .catch(() => toast.error('No se pudieron cargar los proveedores'));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Mapeamos los campos del FrontEnd a los nombres exactos que espera la BD de Laravel
+    if (!formData.precioVenta || !formData.stockInicial || !formData.proveedor) {
+      toast.error('Complete precio, stock inicial y proveedor');
+      return;
+    }
+
     const payload = {
-      num_serie: formData.numeroSerie,
-      nombre: formData.modelo,      // Tu 'modelo' de Figma es el 'nombre' en Laravel
+      num_serie: formData.numeroSerie.toUpperCase(),
+      nombre: formData.modelo,
       marca: formData.marca,
-      precio: parseFloat(formData.precioVenta), 
-      stock_actual: parseInt(formData.stockInicial),
-      stock_minimo: 5,              // Dato requerido por tu Request, lo definimos en 5 por defecto
-      id_proveedor: formData.proveedor, 
+      precio: parseFloat(formData.precioVenta),
+      stock_actual: parseInt(formData.stockInicial, 10),
+      stock_minimo: 10,
+      id_proveedor: formData.proveedor,
+      ubicacion: formData.ubicacion || 'Almacén',
     };
 
     try {
-      // 2. Hacemos la petición POST a Laravel en caliente
-      const response = await fetch('http://localhost:8000/api/productos', {
+      const response = await apiFetch('/productos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -243,12 +261,15 @@ export default function NuevoProducto() {
                     name="proveedor"
                     value={formData.proveedor}
                     onChange={handleChange}
+                    required
                     className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent appearance-none"
                   >
-                    <option value="">Seleccionar</option>
-                    <option value="proveedor1">Proveedor 1</option>
-                    <option value="proveedor2">Proveedor 2</option>
-                    <option value="proveedor3">Proveedor 3</option>
+                    <option value="">Seleccionar proveedor</option>
+                    {proveedores.map((p) => (
+                      <option key={p.id_proveedor} value={p.id_proveedor}>
+                        {p.razon_social} ({p.id_proveedor})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

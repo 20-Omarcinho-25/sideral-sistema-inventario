@@ -1,65 +1,70 @@
 import { useState } from 'react';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import logo_AIReady from '../../imports/Logo_AIReady.png';
+import { apiFetch } from '../lib/api';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) return;
 
+    setLoading(true);
     try {
-     // FORMA CORRECTA DE CONECTAR EN CALIENTE
-const response = await fetch('http://127.0.0.1:8000/api/login', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    },
-    body: JSON.stringify({
-        username: username,
-        password: password
-    })
-});
+      const response = await apiFetch('/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      });
 
       if (!response.ok) {
-        console.error('Login failed', response.status);
+        const errorData = await response.json().catch(() => null);
+        toast.error(errorData?.message ?? 'Credenciales incorrectas');
         return;
       }
 
-      const data = await response.json(); // parse JSON response
+      const data = await response.json();
       if (data?.token) {
         localStorage.setItem('token', data.token);
       }
+      if (data?.usuario) {
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+      }
 
       localStorage.setItem('username', username);
+      if (!rememberMe) {
+        localStorage.removeItem('rememberMe');
+      } else {
+        localStorage.setItem('rememberMe', 'true');
+      }
+
+      toast.success('Sesión iniciada correctamente');
       navigate('/dashboard');
-    } catch (err) {
-      console.error('Login error', err);
+    } catch {
+      toast.error('Error de conexión con el servidor');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#e8ecef] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Green header with logo */}
         <div className="bg-[#1e6b3e] rounded-t-2xl pt-12 pb-8 px-8 flex justify-center">
           <img src={logo_AIReady} alt="AIReady" className="h-12" />
         </div>
 
-        {/* White login card */}
         <div className="bg-white rounded-b-2xl shadow-lg p-8">
           <h2 className="text-center text-2xl mb-6">Iniciar Sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Username field */}
             <div>
               <label htmlFor="username" className="block text-sm text-gray-600 mb-1">
                 Usuario
@@ -72,12 +77,10 @@ const response = await fetch('http://127.0.0.1:8000/api/login', {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1e6b3e] focus:border-transparent"
-                  placeholder=""
                 />
               </div>
             </div>
 
-            {/* Password field */}
             <div>
               <label htmlFor="password" className="block text-sm text-gray-600 mb-1">
                 Contraseña
@@ -90,7 +93,6 @@ const response = await fetch('http://127.0.0.1:8000/api/login', {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1e6b3e] focus:border-transparent"
-                  placeholder=""
                 />
                 <button
                   type="button"
@@ -102,7 +104,6 @@ const response = await fetch('http://127.0.0.1:8000/api/login', {
               </div>
             </div>
 
-            {/* Remember me */}
             <div className="flex items-center text-sm">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -116,12 +117,12 @@ const response = await fetch('http://127.0.0.1:8000/api/login', {
               </label>
             </div>
 
-            {/* Submit button */}
             <button
               type="submit"
-              className="w-full bg-[#1e6b3e] hover:bg-[#165530] text-white py-2.5 rounded-md transition-colors"
+              disabled={loading}
+              className="w-full bg-[#1e6b3e] hover:bg-[#165530] disabled:bg-gray-400 text-white py-2.5 rounded-md transition-colors"
             >
-              Ingresar
+              {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
         </div>

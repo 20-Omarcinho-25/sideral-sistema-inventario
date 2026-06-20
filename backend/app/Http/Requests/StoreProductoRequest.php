@@ -25,7 +25,7 @@ class StoreProductoRequest extends FormRequest
         'stock_minimo' => 'required|integer|min:10|digits_between:1,3',
 
         // LLAVE FORÁNEA: Se valida Tipo y Longitud del ID antes de verificar su existencia en la BD
-        'id_proveedor' => 'required|string|max:15|exists:proveedor,id_proveedor',
+        'id_proveedor' => 'required|string|max:4|exists:proveedor,id_proveedor',
     ];
 }
 

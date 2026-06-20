@@ -15,7 +15,7 @@ class ReporteController extends Controller
         $ventas = Venta::orderBy('fecha_venta', 'desc')->take(100)->get();
 
         // 2. Patrón Decorator: Cargamos una vista HTML (Blade) y la "decoramos" con los datos
-        $pdf = Pdf::loadView('reportes.pdf_ventas', compact('ventas'));
+        $pdf = Pdf::loadView('pdf_ventas', compact('ventas'));
 
         // 3. Descargamos el archivo con la nomenclatura exigida
         $nombreArchivo = 'Sideral_Reporte_Ventas_' . now()->format('Ymd_His') . '.pdf';

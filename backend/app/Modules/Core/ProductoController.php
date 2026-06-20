@@ -1,73 +1,126 @@
 <?php
-// app/Modules/Core/ProductoController.php
+
 namespace App\Modules\Core;
 
 use App\Http\Controllers\Controller;
-use App\Models\Producto;
 use App\Http\Requests\StoreProductoRequest;
 use App\Http\Requests\UpdateProductoRequest;
+use App\Models\MovimientoInventario;
+use App\Models\Producto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-class ProductoController extends Controller {
-/** GET /api/productos — Lista todos o filtra por nombre/marca */
-   public function index(Request $request) {
+class ProductoController extends Controller
+{
+    /** GET /api/productos — Lista todos o filtra por nombre/marca */
+    public function index(Request $request)
+    {
         $productos = Producto::with('proveedor')
-            ->where('estado', true) // <--- ESTA LÍNEA ES CLAVE (Filtra solo los activos)
+            ->where('estado', true)
             ->when($request->filled('search'), function ($query) use ($request) {
                 $q = $request->search;
-                $query->where(function($subQuery) use ($q) {
+                $query->where(function ($subQuery) use ($q) {
                     $subQuery->where('nombre', 'like', "%{$q}%")
-                             ->orWhere('marca', 'like', "%{$q}%");
+                        ->orWhere('marca', 'like', "%{$q}%")
+                        ->orWhere('codigo_producto', 'like', "%{$q}%");
                 });
             })
-            ->paginate(10); 
+            ->paginate(10);
 
         return response()->json($productos);
     }
-    
-    // ... el resto de tus funciones store y update quedan igual ...
 
+    /** POST /api/productos — Registra un producto nuevo */
+    public function store(StoreProductoRequest $request)
+    {
+        $validated = $request->validated();
+
+        $producto = Producto::create([
+            'codigo_producto' => strtoupper($validated['num_serie']),
+            'nombre'          => $validated['nombre'],
+            'marca'           => $validated['marca'],
+            'modelo'          => $validated['nombre'],
+            'procesador'      => 'N/D',
+            'ram'             => 'N/D',
+            'almacenamiento'  => 'N/D',
+            'gpu'             => 'N/D',
+            'precio'          => $validated['precio'],
+            'stock_actual'    => $validated['stock_actual'],
+            'stock_minimo'    => $validated['stock_minimo'],
+            'estado'          => true,
+            'ubicacion'       => $request->input('ubicacion', 'Almacén'),
+            'fecha_registro'  => now(),
+            'id_proveedor'    => $validated['id_proveedor'],
+        ]);
+
+        return response()->json($producto->load('proveedor'), 201);
+    }
+
+    /** PUT /api/productos/{id} — Actualiza un producto */
+    public function update(UpdateProductoRequest $request, $id)
+    {
+        $producto = Producto::findOrFail($id);
+        $validated = $request->validated();
+
+        $datos = [];
+        if (isset($validated['num_serie'])) {
+            $datos['codigo_producto'] = strtoupper($validated['num_serie']);
+        }
+        if (isset($validated['nombre'])) {
+            $datos['nombre'] = $validated['nombre'];
+            $datos['modelo'] = $validated['nombre'];
+        }
+        if (isset($validated['marca'])) {
+            $datos['marca'] = $validated['marca'];
+        }
+        if (isset($validated['precio'])) {
+            $datos['precio'] = $validated['precio'];
+        }
+        if (isset($validated['stock_actual'])) {
+            $datos['stock_actual'] = $validated['stock_actual'];
+        }
+        if (isset($validated['stock_minimo'])) {
+            $datos['stock_minimo'] = $validated['stock_minimo'];
+        }
+        if (isset($validated['id_proveedor'])) {
+            $datos['id_proveedor'] = $validated['id_proveedor'];
+        }
+
+        $producto->update($datos);
+
+        return response()->json($producto->load('proveedor'));
+    }
 
     /** PUT /api/productos/{id}/stock — Ajuste manual de inventario con auditoría */
-    public function actualizarStock(Request $request, $id) {
-        // 1. Validamos estrictamente los datos de entrada
+    public function actualizarStock(Request $request, $id)
+    {
         $request->validate([
             'nuevo_stock' => 'required|integer|min:0',
-            'ajuste'      => 'required|integer', // Puede ser positivo o negativo
-            'motivo'      => 'required|string|max:100'
+            'ajuste'      => 'required|integer',
+            'motivo'      => 'required|string|max:100',
         ]);
 
         try {
-            // 2. Transacción Atómica: O se guarda todo, o no se guarda nada
             DB::transaction(function () use ($request, $id) {
-                
-                // Bloqueamos la fila temporalmente para evitar que alguien venda esta laptop 
-                // justo en el milisegundo que el administrador ajusta el stock
                 $producto = Producto::lockForUpdate()->findOrFail($id);
-
-                // Actualizamos el stock en la tabla producto
                 $producto->update(['stock_actual' => $request->nuevo_stock]);
 
-                // Determinamos si fue una entrada (positiva) o salida (negativa/merma)
                 $tipoMovimiento = $request->ajuste > 0 ? 'Entrada Ajuste' : 'Salida Merma';
+                $usuario = $request->user();
 
-                // 3. Dejamos huella en la tabla de Auditoría (Movimiento_Inventario)
                 MovimientoInventario::create([
-                    'id_producto'     => $producto->id_producto,
-                    'id_usuario'      => request()->user()->id_usuario ?? 1, // ID de quien hizo el cambio
-                    'tipo_movimiento' => $tipoMovimiento,
-                    'cantidad'        => abs($request->ajuste), // Guardamos el valor en positivo
-                    'motivo'          => 'Ajuste manual: ' . $request->motivo,
-                    'fecha_movimiento'=> now()
+                    'id_producto'      => $producto->id_producto,
+                    'id_usuario'       => $usuario?->id_usuario ?? 'U001',
+                    'tipo_movimiento'  => $tipoMovimiento,
+                    'cantidad'         => abs($request->ajuste),
+                    'motivo'           => 'Ajuste manual: ' . $request->motivo,
+                    'fecha_movimiento' => now(),
                 ]);
             });
 
             return response()->json(['message' => 'Stock y auditoría actualizados correctamente.']);
-
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error de estabilidad: ' . $e->getMessage()], 500);
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────

@@ -27,8 +27,11 @@ class ProveedorController extends Controller
         ]);
 
         $proveedor = Proveedor::create(array_merge(
-            $request->all(),
-            ['id_proveedor' => uniqid('PRV-'), 'estado' => true] // Autogeneramos el ID
+            $request->only(['razon_social', 'ruc', 'telefono', 'correo', 'direccion']),
+            [
+                'id_proveedor' => $this->generarIdProveedor(),
+                'estado'       => true,
+            ]
         ));
 
         return response()->json($proveedor, 201);
@@ -56,5 +59,18 @@ class ProveedorController extends Controller
         // En lugar de borrar la fila (que rompería las laptops), lo apagamos.
         $proveedor->update(['estado' => false]);
         return response()->json(['message' => 'Proveedor desactivado exitosamente.']);
+    }
+
+    private function generarIdProveedor(): string
+    {
+        $ultimo = Proveedor::orderBy('id_proveedor', 'desc')->first();
+
+        if (!$ultimo) {
+            return 'PR01';
+        }
+
+        $numero = (int) substr($ultimo->id_proveedor, 2);
+
+        return 'PR' . str_pad((string) ($numero + 1), 2, '0', STR_PAD_LEFT);
     }
 }
