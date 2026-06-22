@@ -12,23 +12,57 @@ use Illuminate\Support\Facades\DB;
 
 class ProductoController extends Controller
 {
+
+
+
+
     /** GET /api/productos — Lista todos o filtra por nombre/marca */
     public function index(Request $request)
-    {
-        $productos = Producto::with('proveedor')
-            ->where('estado', true)
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $q = $request->search;
-                $query->where(function ($subQuery) use ($q) {
-                    $subQuery->where('nombre', 'like', "%{$q}%")
-                        ->orWhere('marca', 'like', "%{$q}%")
-                        ->orWhere('codigo_producto', 'like', "%{$q}%");
-                });
-            })
-            ->paginate(10);
+{
+    $productos = Producto::with('proveedor')
+        ->when($request->filled('search'), function ($query) use ($request) {
+            $q = $request->search;
+            $query->where(function ($subQuery) use ($q) {
+                $subQuery->where('nombre', 'like', "%{$q}%")
+                    ->orWhere('marca', 'like', "%{$q}%")
+                    ->orWhere('codigo_producto', 'like', "%{$q}%");
+            });
+        })
+        ->get();
 
-        return response()->json($productos);
+    $ultimoProducto = Producto::where('codigo_producto', 'like', 'L%')
+        ->orderByRaw('CAST(SUBSTRING(codigo_producto, 2) AS UNSIGNED) DESC')
+        ->first();
+
+    $siguienteCodigo = null;
+    if ($ultimoProducto) {
+        $numero = (int) substr($ultimoProducto->codigo_producto, 1);
+        $siguienteCodigo = 'L' . str_pad((string) ($numero + 1), 3, '0', STR_PAD_LEFT);
     }
+
+    return response()->json([
+        'productos' => $productos,
+        'siguienteCodigo' => $siguienteCodigo,
+    ]);
+}
+
+    /** GET /api/productos/siguiente-codigo — Siguiente código L001, L002... */
+   public function siguienteCodigo()
+{
+    $ultimo = Producto::where('codigo_producto', 'like', 'L%')
+        ->orderByRaw('CAST(SUBSTRING(codigo_producto, 2) AS UNSIGNED) DESC')
+        ->first();
+
+    if (!$ultimo) {
+        return response()->json(['codigo' => 'L001']);
+    }
+
+    $numero = (int) substr($ultimo->codigo_producto, 1);
+
+    return response()->json([
+        'codigo' => 'L' . str_pad((string) ($numero + 1), 3, '0', STR_PAD_LEFT),
+    ]);
+}
 
     /** POST /api/productos — Registra un producto nuevo */
     public function store(StoreProductoRequest $request)
@@ -36,14 +70,11 @@ class ProductoController extends Controller
         $validated = $request->validated();
 
         $producto = Producto::create([
-            'codigo_producto' => strtoupper($validated['num_serie']),
+            'codigo_producto' => strtoupper($validated['codigo_producto']),
+            'num_serie'       => strtoupper($validated['num_serie']),
             'nombre'          => $validated['nombre'],
             'marca'           => $validated['marca'],
             'modelo'          => $validated['nombre'],
-            'procesador'      => 'N/D',
-            'ram'             => 'N/D',
-            'almacenamiento'  => 'N/D',
-            'gpu'             => 'N/D',
             'precio'          => $validated['precio'],
             'stock_actual'    => $validated['stock_actual'],
             'stock_minimo'    => $validated['stock_minimo'],
@@ -89,6 +120,15 @@ class ProductoController extends Controller
         $producto->update($datos);
 
         return response()->json($producto->load('proveedor'));
+    }
+
+    /** DELETE /api/productos/{id} — Eliminación lógica */
+    public function destroy($id)
+    {
+        $producto = Producto::findOrFail($id);
+        $producto->update(['estado' => false]);
+
+        return response()->json(['message' => 'Producto desactivado exitosamente.']);
     }
 
     /** PUT /api/productos/{id}/stock — Ajuste manual de inventario con auditoría */

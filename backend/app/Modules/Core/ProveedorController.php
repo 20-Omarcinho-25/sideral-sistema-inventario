@@ -66,11 +66,11 @@ class ProveedorController extends Controller
         $ultimo = Proveedor::orderBy('id_proveedor', 'desc')->first();
 
         if (!$ultimo) {
-            return 'PR01';
+            return 'P001';
         }
 
-        $numero = (int) substr($ultimo->id_proveedor, 2);
+        $numero = (int) preg_replace('/\D/', '', $ultimo->id_proveedor);
 
-        return 'PR' . str_pad((string) ($numero + 1), 2, '0', STR_PAD_LEFT);
+        return 'P' . str_pad((string) ($numero + 1), 3, '0', STR_PAD_LEFT);
     }
 }

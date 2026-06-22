@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiFetch } from '../lib/api';
@@ -9,9 +10,8 @@ interface ProveedorOption {
 }
 
 export default function NuevoProducto() {
-  const [codigoCounter, setCodigoCounter] = useState(11);
   const [formData, setFormData] = useState({
-    codigoUnico: '',
+    codigoUnico: 'L001',
     marca: '',
     modelo: '',
     numeroSerie: '',
@@ -25,13 +25,15 @@ export default function NuevoProducto() {
   const [proveedores, setProveedores] = useState<ProveedorOption[]>([]);
 
   useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      codigoUnico: `L${String(codigoCounter).padStart(3, '0')}`
-    }));
-  }, [codigoCounter]);
+    apiFetch('/productos/siguiente-codigo')
+      .then(res => res.json())
+      .then(data => {
+        if (data.codigo) {
+          setFormData(prev => ({ ...prev, codigoUnico: data.codigo }));
+        }
+      })
+      .catch(() => toast.error('No se pudo calcular el siguiente código'));
 
-  useEffect(() => {
     apiFetch('/proveedores')
       .then(res => res.json())
       .then(data => {
@@ -44,12 +46,13 @@ export default function NuevoProducto() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.precioVenta || !formData.stockInicial || !formData.proveedor) {
-      toast.error('Complete precio, stock inicial y proveedor');
+    if (!formData.precioVenta || !formData.stockInicial || !formData.proveedor || !formData.numeroSerie) {
+      toast.error('Complete todos los campos obligatorios');
       return;
     }
 
     const payload = {
+      codigo_producto: formData.codigoUnico.toUpperCase(),
       num_serie: formData.numeroSerie.toUpperCase(),
       nombre: formData.modelo,
       marca: formData.marca,
@@ -67,21 +70,30 @@ export default function NuevoProducto() {
       });
 
       if (response.ok) {
-        // Inserción exitosa en la base de datos MySQL
-        toast.success('Producto creado y guardado en la Base de Datos');
-        setCodigoCounter(prev => prev + 1);
-        handleCancel(); // Limpia el formulario
+        toast.success('Producto creado correctamente');
+        const nextRes = await apiFetch('/productos/siguiente-codigo');
+        const nextData = await nextRes.json();
+        setFormData({
+          codigoUnico: nextData.codigo ?? 'L001',
+          marca: '',
+          modelo: '',
+          numeroSerie: '',
+          stockInicial: '',
+          costoUnitario: '',
+          precioVenta: '',
+          proveedor: '',
+          ubicacion: '',
+        });
       } else {
-        // Manejo de errores si fallan tus 3 validaciones de Laravel
         const errorData = await response.json();
-        console.log("Errores de validación:", errorData);
-        toast.error('Error al crear: Verifica los datos (Ej: ID Proveedor debe existir)');
+        console.log('Errores de validación:', errorData);
+        toast.error(errorData.message ?? 'Error al crear el producto');
       }
-    } catch (error) {
-      toast.error('Error fatal de conexión con el servidor de Laravel');
+    } catch {
+      toast.error('Error de conexión con el servidor');
     }
   };
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -90,8 +102,8 @@ export default function NuevoProducto() {
   };
 
   const handleCancel = () => {
-    setFormData({
-      codigoUnico: `L${String(codigoCounter).padStart(3, '0')}`,
+    setFormData(prev => ({
+      codigoUnico: prev.codigoUnico,
       marca: '',
       modelo: '',
       numeroSerie: '',
@@ -100,16 +112,23 @@ export default function NuevoProducto() {
       precioVenta: '',
       proveedor: '',
       ubicacion: '',
-    });
+    }));
   };
 
   return (
     <div>
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase">Nuevo Producto</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 uppercase">Nuevo Producto</h2>
+        <Link
+          to="/productos"
+          className="text-sm text-[#1e6b3e] hover:underline"
+        >
+          ← Volver a productos
+        </Link>
+      </div>
 
+      <div className="bg-white rounded-lg shadow-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Primera fila */}
           <div className="grid grid-cols-4 gap-4">
             <div>
               <label htmlFor="codigoUnico" className="block text-xs text-gray-600 mb-1">
@@ -126,9 +145,7 @@ export default function NuevoProducto() {
             </div>
 
             <div>
-              <label htmlFor="marca" className="block text-xs text-gray-600 mb-1">
-                Marca
-              </label>
+              <label htmlFor="marca" className="block text-xs text-gray-600 mb-1">Marca</label>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input
@@ -137,18 +154,14 @@ export default function NuevoProducto() {
                   type="text"
                   value={formData.marca}
                   onChange={handleChange}
-                  placeholder="Marca"
-                  maxLength={50}
                   required
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="modelo" className="block text-xs text-gray-600 mb-1">
-                Modelo
-              </label>
+              <label htmlFor="modelo" className="block text-xs text-gray-600 mb-1">Modelo</label>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input
@@ -157,148 +170,123 @@ export default function NuevoProducto() {
                   type="text"
                   value={formData.modelo}
                   onChange={handleChange}
-                  placeholder="Modelo"
-                  maxLength={50}
                   required
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="numeroSerie" className="block text-xs text-gray-600 mb-1">
-                Número de Serie
-              </label>
+              <label htmlFor="numeroSerie" className="block text-xs text-gray-600 mb-1">Número de Serie</label>
               <input
                 id="numeroSerie"
                 name="numeroSerie"
                 type="text"
                 value={formData.numeroSerie}
                 onChange={handleChange}
-                placeholder="Número de Serie"
+                required
                 maxLength={15}
-                  required
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
               />
             </div>
           </div>
 
-          {/* Inventario & Costo */}
           <div>
             <h3 className="text-xs font-semibold text-gray-700 mb-3">Inventario & Costo</h3>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label htmlFor="stockInicial" className="block text-xs text-gray-600 mb-1">
-                  Stock Inicial
-                </label>
+                <label htmlFor="stockInicial" className="block text-xs text-gray-600 mb-1">Stock Inicial</label>
                 <input
                   id="stockInicial"
                   name="stockInicial"
                   type="number"
                   value={formData.stockInicial}
                   onChange={handleChange}
-                  placeholder="1"
+                  required
                   min="0"
-                  max="99999"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
                 />
               </div>
 
               <div>
-                <label htmlFor="costoUnitario" className="block text-xs text-gray-600 mb-1">
-                  Costo Unitario (S/.)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">S/</span>
-                  <input
-                    id="costoUnitario"
-                    name="costoUnitario"
-                    type="number"
-                    step="0.01"
-                    value={formData.costoUnitario}
-                    onChange={handleChange}
-                    placeholder="0"
-                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
-                  />
-                </div>
+                <label htmlFor="costoUnitario" className="block text-xs text-gray-600 mb-1">Costo Unitario (S/.)</label>
+                <input
+                  id="costoUnitario"
+                  name="costoUnitario"
+                  type="number"
+                  step="0.01"
+                  value={formData.costoUnitario}
+                  onChange={handleChange}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
+                />
               </div>
 
               <div>
-                <label htmlFor="precioVenta" className="block text-xs text-gray-600 mb-1">
-                  Precio de Venta (S/.)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">S/</span>
-                  <input
-                    id="precioVenta"
-                    name="precioVenta"
-                    type="number"
-                    step="0.01"
-                    value={formData.precioVenta}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    min="0"
-                    max="99999"
-                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
-                  />
-                </div>
+                <label htmlFor="precioVenta" className="block text-xs text-gray-600 mb-1">Precio de Venta (S/.)</label>
+                <input
+                  id="precioVenta"
+                  name="precioVenta"
+                  type="number"
+                  step="0.01"
+                  value={formData.precioVenta}
+                  onChange={handleChange}
+                  required
+                  min="0"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
+                />
               </div>
             </div>
           </div>
 
-          {/* Adicional */}
           <div>
             <h3 className="text-xs font-semibold text-gray-700 mb-3">Adicional</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="proveedor" className="block text-xs text-gray-600 mb-1">
-                  Proveedor
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                  <select
-                    id="proveedor"
-                    name="proveedor"
-                    value={formData.proveedor}
-                    onChange={handleChange}
-                    required
-                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent appearance-none"
-                  >
-                    <option value="">Seleccionar proveedor</option>
-                    {proveedores.map((p) => (
-                      <option key={p.id_proveedor} value={p.id_proveedor}>
-                        {p.razon_social} ({p.id_proveedor})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <label htmlFor="proveedor" className="block text-xs text-gray-600 mb-1">Proveedor</label>
+                <select
+                  id="proveedor"
+                  name="proveedor"
+                  value={formData.proveedor}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
+                >
+                  <option value="">Seleccionar proveedor</option>
+                  {proveedores.map((p) => (
+                    <option key={p.id_proveedor} value={p.id_proveedor}>
+                      {p.razon_social} ({p.id_proveedor})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label htmlFor="ubicacion" className="block text-xs text-gray-600 mb-1">
-                  Ubicación
-                </label>
+                <label htmlFor="ubicacion" className="block text-xs text-gray-600 mb-1">Ubicación</label>
                 <input
                   id="ubicacion"
                   name="ubicacion"
                   type="text"
                   value={formData.ubicacion}
                   onChange={handleChange}
-                  placeholder="Ubicación"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e] focus:border-transparent"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1e6b3e]"
                 />
               </div>
             </div>
           </div>
 
-          {/* Botones */}
           <div className="flex justify-end gap-3 pt-2">
+            <Link
+              to="/productos"
+              className="px-6 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors uppercase"
+            >
+              Cancelar
+            </Link>
             <button
               type="button"
               onClick={handleCancel}
               className="px-6 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors uppercase"
             >
-              Cancelar
+              Limpiar
             </button>
             <button
               type="submit"

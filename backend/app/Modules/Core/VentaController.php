@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB; // <- CRÍTICO PARA LA ESTABILIDAD
 use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\Producto;
+use App\Models\MovimientoInventario;
 use App\Http\Requests\StoreVentaRequest;
 
 class VentaController extends Controller
@@ -34,8 +35,9 @@ class VentaController extends Controller
                     'nombre_cliente' => $request->nombre_cliente,
                     'dni_cliente'    => $request->dni_cliente,
                     'fecha_venta'    => now(),
-                    'total'          => 0, // Inicia en 0, lo sumaremos en el bucle
+                    'total'          => 0,
                     'estado'         => 'Completada',
+                    'id_usuario'     => $request->user()?->id_usuario ?? 'U001',
                 ]);
 
                 $totalVenta = 0;
@@ -64,6 +66,16 @@ class VentaController extends Controller
 
                     // 4. Descontar el stock actual de la base de datos
                     $producto->decrement('stock_actual', $item['cantidad']);
+
+                    // 5. Registrar movimiento de inventario
+                    MovimientoInventario::create([
+                        'id_producto'      => $producto->id_producto,
+                        'id_usuario'       => $request->user()?->id_usuario ?? 'U001',
+                        'tipo_movimiento'  => 'Salida Venta',
+                        'cantidad'         => $item['cantidad'],
+                        'motivo'           => 'Venta #' . $nuevaVenta->id_venta,
+                        'fecha_movimiento' => now(),
+                    ]);
                 }
 
                 // 5. Actualizar la Venta con el Total calculado real

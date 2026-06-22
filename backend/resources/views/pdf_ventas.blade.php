@@ -8,7 +8,7 @@
         .cabecera { text-align: center; margin-bottom: 20px; }
         .titulo { font-size: 18px; font-weight: bold; color: #1e6b3e; }
         .fecha { font-size: 10px; color: #555; }
-        table { w-full; border-collapse: collapse; margin-top: 10px; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f4f4f4; color: #333; }
         .total { text-align: right; font-weight: bold; }

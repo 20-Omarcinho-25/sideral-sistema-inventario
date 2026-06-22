@@ -1,10 +1,30 @@
 <?php
-// app/Models/DetalleVenta.php
-class DetalleVenta extends Model {
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class DetalleVenta extends Model
+{
     protected $table = 'detalle_venta';
-    // ...
-    /** Calcula el subtotal de un item */
-    public function calcularSubtotal(int $cant, float $precio): float {
-        return round($cant * $precio, 2);
+    protected $primaryKey = 'id_detalle';
+    public $timestamps = false;
+
+    protected $fillable = [
+        'id_venta',
+        'id_producto',
+        'cantidad',
+        'precio_unitario',
+        'subtotal',
+    ];
+
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'id_producto', 'id_producto');
+    }
+
+    public function venta()
+    {
+        return $this->belongsTo(Venta::class, 'id_venta', 'id_venta');
     }
 }

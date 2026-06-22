@@ -8,18 +8,21 @@ use Barryvdh\DomPDF\Facade\Pdf; // <- Importación de la librería obligatoria
 
 class ReporteController extends Controller
 {
-    /** GET /api/reportes/ventas/exportar — Exportación en PDF (Requisito mínimo) */
+    /** GET /api/reportes/ventas/exportar — Exportación en HTML (Alternativa a PDF) */
     public function exportarVentasPDF()
     {
-        // 1. Obtenemos las transacciones (Limitamos a las últimas 100 para no agotar la RAM de DomPDF)
-        $ventas = Venta::orderBy('fecha_venta', 'desc')->take(100)->get();
+        try {
+            // 1. Obtenemos las transacciones sin relaciones complejas para evitar errores
+            $ventas = Venta::orderBy('fecha_venta', 'desc')
+                ->take(100)
+                ->get();
 
-        // 2. Patrón Decorator: Cargamos una vista HTML (Blade) y la "decoramos" con los datos
-        $pdf = Pdf::loadView('pdf_ventas', compact('ventas'));
-
-        // 3. Descargamos el archivo con la nomenclatura exigida
-        $nombreArchivo = 'Sideral_Reporte_Ventas_' . now()->format('Ymd_His') . '.pdf';
-        
-        return $pdf->download($nombreArchivo);
+            // 2. Retornamos HTML que el navegador puede imprimir como PDF
+            return response()->view('pdf_ventas', compact('ventas'))
+                ->header('Content-Type', 'text/html')
+                ->header('Content-Disposition', 'inline; filename="reporte_ventas.html"');
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al generar reporte: ' . $e->getMessage()], 500);
+        }
     }
 }

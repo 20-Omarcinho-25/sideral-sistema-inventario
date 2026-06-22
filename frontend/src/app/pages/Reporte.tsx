@@ -10,15 +10,15 @@ export default function Reportes() {
   // Función 100% EN CALIENTE para consumir el endpoint
   const handleDescargarPDF = async () => {
     setDescargando(true);
-    toast.info('Solicitando PDF al servidor. Esto puede tomar unos segundos...');
+    toast.info('Generando reporte...');
 
     try {
       // 1. Petición HTTP GET al controlador ReporteController de Laravel
       const response = await fetch(`${API_BASE}/reportes/ventas/exportar`, {
         method: 'GET',
         headers: {
-          ...getAuthHeaders(false),
-          Accept: 'application/pdf',
+          ...getAuthHeaders(true),
+          Accept: 'text/html',
         },
       });
 
@@ -26,26 +26,17 @@ export default function Reportes() {
         throw new Error('Fallo en la comunicación con la Base de Datos');
       }
 
-      // 2. Procesamiento del Archivo Binario (Blob)
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
-      // 3. Creación de un enlace temporal ancla <a> en el DOM
-      const a = document.createElement('a');
-      a.href = url;
+      // 2. Obtener HTML y abrir en nueva ventana
+      const html = await response.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(html);
+        newWindow.document.close();
+        toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
+      } else {
+        toast.error('No se pudo abrir la ventana. Habilita las ventanas emergentes.');
+      }
 
-      // 4. Nombre dinámico del archivo
-      const fechaActual = new Date().toISOString().slice(0, 10);
-      a.download = `Sideral_Reporte_Ventas_${fechaActual}.pdf`;
-
-      // 5. Ejecutar la descarga y limpiar memoria
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('¡Reporte PDF descargado con éxito!');
-      
     } catch (error) {
       console.error("Error al descargar:", error);
       toast.error('Ocurrió un error al generar el documento. Revise la consola del servidor.');

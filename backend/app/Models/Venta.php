@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 class Venta extends Model {
     protected $table      = 'venta';
     protected $primaryKey = 'id_venta';
-    public    $keyType    = 'string';
-    public    $incrementing = false;
+    public    $incrementing = true;
     public    $timestamps  = false;
     protected $fillable = ['id_venta','fecha_venta','total','estado',
                            'nombre_cliente','dni_cliente','id_usuario'];
@@ -24,7 +23,6 @@ class Venta extends Model {
             throw new \Exception("Stock insuficiente para {$prod->nombre}");
         }
         DetalleVenta::create([
-            'id_detalle'      => uniqid('DV'),
             'id_venta'        => $this->id_venta,
             'id_producto'     => $prod->id_producto,
             'cantidad'        => $cant,
@@ -38,12 +36,11 @@ class Venta extends Model {
         return collect($detalles)->sum('subtotal');
     }
 
-    /** Marca la venta como completada y dispara el evento VentaFinalizada */
+    /** Marca la venta como completada */
     public function finalizarVenta(Usuario $vendedor): bool {
         $this->estado     = 'Completada';
         $this->id_usuario = $vendedor->id_usuario;
         $this->save();
-        event(new \App\Events\VentaFinalizada($this));
         return true;
     }
 }
