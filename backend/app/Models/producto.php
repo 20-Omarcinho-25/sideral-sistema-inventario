@@ -9,18 +9,15 @@ class Producto extends Model
 {
     protected $table = 'producto';
     protected $primaryKey = 'id_producto';
+    public $keyType = 'string';
+    public $incrementing = false;
     public $timestamps = false;
 
     protected $fillable = [
-        'codigo_producto',
+        'id_producto',
         'num_serie',
         'nombre',
         'marca',
-        'modelo',
-        'procesador',
-        'ram',
-        'almacenamiento',
-        'gpu',
         'precio',
         'stock_actual',
         'stock_minimo',

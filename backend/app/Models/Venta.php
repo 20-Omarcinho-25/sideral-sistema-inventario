@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 class Venta extends Model {
     protected $table      = 'venta';
     protected $primaryKey = 'id_venta';
-    public    $incrementing = true;
+    public    $keyType = 'string';
+    public    $incrementing = false;
     public    $timestamps  = false;
     protected $fillable = ['id_venta','fecha_venta','total','estado',
                            'nombre_cliente','dni_cliente','id_usuario'];

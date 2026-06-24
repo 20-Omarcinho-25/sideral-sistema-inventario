@@ -32,6 +32,7 @@ class VentaController extends Controller
                 
                 // 1. Crear la cabecera de la Venta
                 $nuevaVenta = Venta::create([
+                    'id_venta'       => 'V' . str_pad((string) rand(1, 999), 3, '0', STR_PAD_LEFT),
                     'nombre_cliente' => $request->nombre_cliente,
                     'dni_cliente'    => $request->dni_cliente,
                     'fecha_venta'    => now(),
@@ -57,7 +58,8 @@ class VentaController extends Controller
 
                     // 3. Crear el Detalle de la Venta
                     DetalleVenta::create([
-                        'id_venta'        => $nuevaVenta->id_venta, 
+                        'id_detalle'      => 'D' . str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT),
+                        'id_venta'        => $nuevaVenta->id_venta,
                         'id_producto'     => $producto->id_producto,
                         'cantidad'        => $item['cantidad'],
                         'precio_unitario' => $producto->precio,
@@ -69,11 +71,11 @@ class VentaController extends Controller
 
                     // 5. Registrar movimiento de inventario
                     MovimientoInventario::create([
+                        'id_movimiento'   => 'M' . str_pad((string) rand(1, 999), 3, '0', STR_PAD_LEFT),
                         'id_producto'      => $producto->id_producto,
                         'id_usuario'       => $request->user()?->id_usuario ?? 'U001',
                         'tipo_movimiento'  => 'Salida Venta',
                         'cantidad'         => $item['cantidad'],
-                        'motivo'           => 'Venta #' . $nuevaVenta->id_venta,
                         'fecha_movimiento' => now(),
                     ]);
                 }

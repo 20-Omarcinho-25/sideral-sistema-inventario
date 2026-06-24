@@ -8,9 +8,12 @@ class DetalleVenta extends Model
 {
     protected $table = 'detalle_venta';
     protected $primaryKey = 'id_detalle';
+    public $keyType = 'string';
+    public $incrementing = false;
     public $timestamps = false;
 
     protected $fillable = [
+        'id_detalle',
         'id_venta',
         'id_producto',
         'cantidad',

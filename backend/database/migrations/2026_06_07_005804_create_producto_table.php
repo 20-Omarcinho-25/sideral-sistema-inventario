@@ -9,20 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('producto', function (Blueprint $table) {
-            $table->id('id_producto');
-            $table->string('codigo_producto', 50);
-            $table->string('nombre', 150);
-            $table->string('marca', 100);
-            $table->string('modelo', 100);
-            $table->string('procesador', 100);
-            $table->string('ram', 50);
-            $table->string('almacenamiento', 50);
-            $table->string('gpu', 100);
-            $table->decimal('precio', 10, 2);
-            $table->integer('stock_actual');
-            $table->integer('stock_minimo');
+            $table->char('id_producto', 4)->primary();
+            $table->string('num_serie', 15);
+            $table->string('nombre', 50);
+            $table->string('marca', 50);
+            $table->decimal('precio', 8, 2);
+            $table->smallInteger('stock_actual');
+            $table->tinyInteger('stock_minimo');
             $table->boolean('estado');
-            $table->string('ubicacion', 100);
+            $table->char('ubicacion', 4);
             $table->dateTime('fecha_registro');
 
             $table->char('id_proveedor', 4);

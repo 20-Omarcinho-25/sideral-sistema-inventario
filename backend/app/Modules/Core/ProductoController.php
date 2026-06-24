@@ -25,61 +25,57 @@ class ProductoController extends Controller
             $query->where(function ($subQuery) use ($q) {
                 $subQuery->where('nombre', 'like', "%{$q}%")
                     ->orWhere('marca', 'like', "%{$q}%")
-                    ->orWhere('codigo_producto', 'like', "%{$q}%");
+                    ->orWhere('num_serie', 'like', "%{$q}%");
             });
         })
         ->get();
 
-    $ultimoProducto = Producto::where('codigo_producto', 'like', 'L%')
-        ->orderByRaw('CAST(SUBSTRING(codigo_producto, 2) AS UNSIGNED) DESC')
-        ->first();
-
-    $siguienteCodigo = null;
-    if ($ultimoProducto) {
-        $numero = (int) substr($ultimoProducto->codigo_producto, 1);
-        $siguienteCodigo = 'L' . str_pad((string) ($numero + 1), 3, '0', STR_PAD_LEFT);
-    }
-
     return response()->json([
         'productos' => $productos,
-        'siguienteCodigo' => $siguienteCodigo,
     ]);
 }
 
     /** GET /api/productos/siguiente-codigo — Siguiente código L001, L002... */
-   public function siguienteCodigo()
-{
-    $ultimo = Producto::where('codigo_producto', 'like', 'L%')
-        ->orderByRaw('CAST(SUBSTRING(codigo_producto, 2) AS UNSIGNED) DESC')
-        ->first();
+    public function siguienteCodigo()
+    {
+        $ultimo = Producto::where('id_producto', 'like', 'L%')
+            ->orderBy('id_producto', 'desc')
+            ->first();
 
-    if (!$ultimo) {
-        return response()->json(['codigo' => 'L001']);
+        if (!$ultimo) {
+            return response()->json(['codigo' => 'L001']);
+        }
+
+        $numero = (int) substr($ultimo->id_producto, 1);
+        $siguienteNumero = $numero + 1;
+
+        if ($siguienteNumero > 999) {
+            return response()->json(['codigo' => 'L001'], 400); // Reiniciar si excede
+        }
+
+        return response()->json([
+            'codigo' => 'L' . str_pad((string) $siguienteNumero, 3, '0', STR_PAD_LEFT),
+        ]);
     }
-
-    $numero = (int) substr($ultimo->codigo_producto, 1);
-
-    return response()->json([
-        'codigo' => 'L' . str_pad((string) ($numero + 1), 3, '0', STR_PAD_LEFT),
-    ]);
-}
 
     /** POST /api/productos — Registra un producto nuevo */
     public function store(StoreProductoRequest $request)
     {
         $validated = $request->validated();
 
+        // Obtener el siguiente código secuencial
+        $siguienteCodigo = $this->siguienteCodigo()->getData()->codigo;
+
         $producto = Producto::create([
-            'codigo_producto' => strtoupper($validated['codigo_producto']),
+            'id_producto'     => $siguienteCodigo,
             'num_serie'       => strtoupper($validated['num_serie']),
             'nombre'          => $validated['nombre'],
             'marca'           => $validated['marca'],
-            'modelo'          => $validated['nombre'],
             'precio'          => $validated['precio'],
             'stock_actual'    => $validated['stock_actual'],
             'stock_minimo'    => $validated['stock_minimo'],
             'estado'          => true,
-            'ubicacion'       => $request->input('ubicacion', 'Almacén'),
+            'ubicacion'       => $request->input('ubicacion', 'AL01'),
             'fecha_registro'  => now(),
             'id_proveedor'    => $validated['id_proveedor'],
         ]);
@@ -95,11 +91,10 @@ class ProductoController extends Controller
 
         $datos = [];
         if (isset($validated['num_serie'])) {
-            $datos['codigo_producto'] = strtoupper($validated['num_serie']);
+            $datos['num_serie'] = strtoupper($validated['num_serie']);
         }
         if (isset($validated['nombre'])) {
             $datos['nombre'] = $validated['nombre'];
-            $datos['modelo'] = $validated['nombre'];
         }
         if (isset($validated['marca'])) {
             $datos['marca'] = $validated['marca'];
@@ -131,13 +126,21 @@ class ProductoController extends Controller
         return response()->json(['message' => 'Producto desactivado exitosamente.']);
     }
 
+    /** DELETE /api/productos/{id}/force — Eliminación física (borrado definitivo) */
+    public function forceDestroy($id)
+    {
+        $producto = Producto::findOrFail($id);
+        $producto->delete();
+
+        return response()->json(['message' => 'Producto eliminado permanentemente de la base de datos.']);
+    }
+
     /** PUT /api/productos/{id}/stock — Ajuste manual de inventario con auditoría */
     public function actualizarStock(Request $request, $id)
     {
         $request->validate([
             'nuevo_stock' => 'required|integer|min:0',
             'ajuste'      => 'required|integer',
-            'motivo'      => 'required|string|max:100',
         ]);
 
         try {
@@ -149,11 +152,11 @@ class ProductoController extends Controller
                 $usuario = $request->user();
 
                 MovimientoInventario::create([
+                    'id_movimiento'   => 'M' . str_pad((string) rand(1, 999), 3, '0', STR_PAD_LEFT),
                     'id_producto'      => $producto->id_producto,
                     'id_usuario'       => $usuario?->id_usuario ?? 'U001',
                     'tipo_movimiento'  => $tipoMovimiento,
                     'cantidad'         => abs($request->ajuste),
-                    'motivo'           => 'Ajuste manual: ' . $request->motivo,
                     'fecha_movimiento' => now(),
                 ]);
             });

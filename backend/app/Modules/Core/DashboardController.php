@@ -20,7 +20,7 @@ class DashboardController extends Controller
                                    ->where('estado', 'Completada')
                                    ->sum('total') ?? 0;
 
-            // 2. MySQL cuenta cuántas laptops están en peligro (stock_actual <= stock_minimo)
+            // 2. MySQL cuenta cuántas laptops están en peligor (stock_actual <= stock_minimo)
             $productosBajoStock = Producto::whereColumn('stock_actual', '<=', 'stock_minimo')->count() ?? 0;
 
             // 3. MySQL cuenta proveedores activos (sin filtro de estado para evitar errores)
@@ -45,6 +45,67 @@ class DashboardController extends Controller
                 'proveedores_activos' => 0,
                 'ventas_recientes'    => [],
                 'error'              => 'Error al calcular métricas: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /** GET /api/dashboard/estadisticas-ventas — Reporte con máximos, mínimos y promedios */
+    public function estadisticasVentas()
+    {
+        try {
+            // 1. Venta más alta del mes
+            $ventaMaxima = Venta::whereMonth('fecha_venta', now()->month)
+                                ->whereYear('fecha_venta', now()->year)
+                                ->where('estado', 'Completada')
+                                ->max('total') ?? 0;
+
+            // 2. Venta más baja del mes
+            $ventaMinima = Venta::whereMonth('fecha_venta', now()->month)
+                                ->whereYear('fecha_venta', now()->year)
+                                ->where('estado', 'Completada')
+                                ->min('total') ?? 0;
+
+            // 3. Promedio de ventas del mes
+            $promedioVentas = Venta::whereMonth('fecha_venta', now()->month)
+                                    ->whereYear('fecha_venta', now()->year)
+                                    ->where('estado', 'Completada')
+                                    ->avg('total') ?? 0;
+
+            // 4. Total de ventas del mes (cantidad de transacciones)
+            $cantidadVentas = Venta::whereMonth('fecha_venta', now()->month)
+                                    ->whereYear('fecha_venta', now()->year)
+                                    ->where('estado', 'Completada')
+                                    ->count() ?? 0;
+
+            // 5. Producto más vendido (por cantidad total)
+            $productoMasVendido = DB::table('detalle_venta')
+                ->join('producto', 'detalle_venta.id_producto', '=', 'producto.id_producto')
+                ->select('producto.nombre', DB::raw('SUM(detalle_venta.cantidad) as total_vendido'))
+                ->whereMonth('detalle_venta.fecha_venta', now()->month)
+                ->whereYear('detalle_venta.fecha_venta', now()->year)
+                ->groupBy('producto.nombre')
+                ->orderByDesc('total_vendido')
+                ->first();
+
+            return response()->json([
+                'venta_maxima'       => (float) $ventaMaxima,
+                'venta_minima'       => (float) $ventaMinima,
+                'promedio_ventas'    => (float) $promedioVentas,
+                'cantidad_ventas'    => (int) $cantidadVentas,
+                'producto_mas_vendido' => $productoMasVendido ? [
+                    'nombre' => $productoMasVendido->nombre,
+                    'cantidad' => (int) $productoMasVendido->total_vendido
+                ] : null
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'venta_maxima'       => 0,
+                'venta_minima'       => 0,
+                'promedio_ventas'    => 0,
+                'cantidad_ventas'    => 0,
+                'producto_mas_vendido' => null,
+                'error'              => 'Error al calcular estadísticas: ' . $e->getMessage()
             ], 500);
         }
     }

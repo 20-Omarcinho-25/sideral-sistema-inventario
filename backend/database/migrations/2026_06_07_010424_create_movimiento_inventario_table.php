@@ -9,13 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('movimiento_inventario', function (Blueprint $table) {
-            $table->id('id_movimiento');
+            $table->char('id_movimiento', 4)->primary();
             $table->string('tipo_movimiento', 50);
             $table->dateTime('fecha_movimiento');
-            $table->integer('cantidad');
-            $table->string('motivo', 255);
+            $table->tinyInteger('cantidad');
 
-            $table->unsignedBigInteger('id_producto');
+            $table->char('id_producto', 4);
             $table->char('id_usuario', 4);
 
             $table->foreign('id_producto')

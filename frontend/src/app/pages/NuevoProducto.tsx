@@ -52,7 +52,6 @@ export default function NuevoProducto() {
     }
 
     const payload = {
-      codigo_producto: formData.codigoUnico.toUpperCase(),
       num_serie: formData.numeroSerie.toUpperCase(),
       nombre: formData.modelo,
       marca: formData.marca,
@@ -60,7 +59,7 @@ export default function NuevoProducto() {
       stock_actual: parseInt(formData.stockInicial, 10),
       stock_minimo: 10,
       id_proveedor: formData.proveedor,
-      ubicacion: formData.ubicacion || 'Almacén',
+      ubicacion: formData.ubicacion || 'AL01',
     };
 
     try {

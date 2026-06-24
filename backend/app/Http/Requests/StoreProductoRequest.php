@@ -14,10 +14,9 @@ class StoreProductoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'codigo_producto' => 'required|string|max:50|regex:/^L[0-9]{3}$/|unique:producto,codigo_producto',
-            'num_serie'       => 'nullable|string|max:15|regex:/^[A-Z0-9-]+$/',
-        'nombre'       => 'required|string|max:50|regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$/',
-        'marca'        => 'required|string|max:50|regex:/^[a-zA-Z0-9\s-]+$/',
+            'num_serie'       => 'required|string|max:15|regex:/^[A-Z0-9-]+$/',
+            'nombre'       => 'required|string|max:50|regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$/',
+            'marca'        => 'required|string|max:50|regex:/^[a-zA-Z0-9\s-]+$/',
 
         // NÚMEROS: Se añade el parámetro '|max:...' para cerrar el RANGO lógico de valores y evitar desbordamientos
         'precio'       => 'required|numeric|min:0.01|max:99999.99',

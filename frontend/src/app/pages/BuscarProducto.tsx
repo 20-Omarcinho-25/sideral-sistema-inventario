@@ -5,8 +5,7 @@ import { toast } from 'sonner';
 import { apiFetch } from '../lib/api';
 
 interface Producto {
-  id_producto: number;
-  codigo_producto: string;
+  id_producto: string;
   marca: string;
   nombre: string;
   stock_actual: number;
@@ -80,7 +79,7 @@ export default function BuscarProducto() {
     setShowEditForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm('¿Desactivar este producto del inventario?')) return;
 
     try {
@@ -144,7 +143,7 @@ export default function BuscarProducto() {
       {showEditForm && editingProducto && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase">
-            Editar Producto — {editingProducto.codigo_producto}
+            Editar Producto — {editingProducto.id_producto}
           </h3>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
@@ -272,7 +271,7 @@ export default function BuscarProducto() {
               ) : productos.length > 0 ? (
                 productos.map((producto) => (
                   <tr key={producto.id_producto} className="hover:bg-gray-50">
-                    <td className="px-3 py-2.5 text-gray-700 font-medium">{producto.codigo_producto}</td>
+                    <td className="px-3 py-2.5 text-gray-700 font-medium">{producto.id_producto}</td>
                     <td className="px-3 py-2.5 text-gray-700">{producto.marca}</td>
                     <td className="px-3 py-2.5 text-gray-900">{producto.nombre}</td>
                     <td className="px-3 py-2.5 text-center text-gray-900">{producto.stock_actual}</td>

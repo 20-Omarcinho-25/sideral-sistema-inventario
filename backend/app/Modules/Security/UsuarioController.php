@@ -27,8 +27,10 @@ class UsuarioController extends Controller
             'apellido' => 'required|string|max:50',
             'username' => 'required|string|max:50|unique:usuario,username',
             'correo'   => 'required|email|unique:usuario,correo',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
             'id_rol'   => 'required|exists:rol,id_rol'
+        ], [
+            'password.regex' => 'La contraseña debe tener mínimo 8 caracteres, al menos una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&).'
         ]);
 
         $usuario = Usuario::create([
