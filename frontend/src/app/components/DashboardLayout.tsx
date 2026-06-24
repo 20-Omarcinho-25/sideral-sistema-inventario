@@ -44,12 +44,6 @@ export default function DashboardLayout() {
           <Link to="/productos" className="block px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium">
             📦 Productos
           </Link>
-          <Link to="/productos/nuevo" className="block px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium ml-2 text-sm">
-            ➕ Nuevo Producto
-          </Link>
-          <Link to="/productos/stock" className="block px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium ml-2 text-sm">
-            📊 Actualizar Stock
-          </Link>
           <Link to="/ventas" className="block px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium">
             🛒 Ventas
           </Link>

@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('detalle_venta', function (Blueprint $table) {
-            $table->id('id_detalle');
+            $table->char('id_detalle', 5)->primary();
 
-            $table->unsignedBigInteger('id_venta');
-            $table->unsignedBigInteger('id_producto');
+            $table->char('id_venta', 4);
+            $table->char('id_producto', 4);
 
-            $table->integer('cantidad');
-            $table->decimal('precio_unitario', 10, 2);
+            $table->smallInteger('cantidad');
+            $table->decimal('precio_unitario', 8, 2);
             $table->decimal('subtotal', 10, 2);
 
             $table->foreign('id_venta')

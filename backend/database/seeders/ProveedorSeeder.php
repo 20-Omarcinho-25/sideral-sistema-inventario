@@ -10,7 +10,7 @@ class ProveedorSeeder extends Seeder
     public function run(): void
     {
         Proveedor::updateOrCreate(
-            ['id_proveedor' => 'PR01'],
+            ['id_proveedor' => 'P001'],
             [
                 'razon_social' => 'Distribuidora Laptops SAC',
                 'ruc'          => '20123456789',
@@ -22,7 +22,7 @@ class ProveedorSeeder extends Seeder
         );
 
         Proveedor::updateOrCreate(
-            ['id_proveedor' => 'PR02'],
+            ['id_proveedor' => 'P002'],
             [
                 'razon_social' => 'Importadora Tecno Perú',
                 'ruc'          => '20987654321',
@@ -34,7 +34,7 @@ class ProveedorSeeder extends Seeder
         );
 
         Proveedor::updateOrCreate(
-            ['id_proveedor' => 'PR03'],
+            ['id_proveedor' => 'P003'],
             [
                 'razon_social' => 'TechSupply Global',
                 'ruc'          => '20456789123',

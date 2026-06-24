@@ -42,10 +42,10 @@ export default function VentaProductos() {
     apiFetch('/productos')
       .then(res => res.json())
       .then(data => {
-        const raw: Record<string, unknown>[] = data.data ? data.data : data;
+        const raw: Record<string, unknown>[] = data.productos ? data.productos : data;
         const mapped: ProductoDisponible[] = raw.map(p => ({
           id: String(p.id_producto ?? p.id ?? ''),
-          codigo: String(p.codigo_producto ?? p.id_producto ?? p.id ?? ''),
+          codigo: String(p.id_producto ?? ''),
           marca: String(p.marca ?? ''),
           modelo: String(p.nombre ?? p.modelo ?? ''),
           precio: Number(p.precio ?? 0),
@@ -131,7 +131,7 @@ export default function VentaProductos() {
       nombre_cliente: cliente,
       dni_cliente: dniRuc,
       productos: items.map(item => ({
-        id_producto: Number(item.id_producto),
+        id_producto: String(item.id_producto),
         cantidad: item.cantidad,
       })),
     };

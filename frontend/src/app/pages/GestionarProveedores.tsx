@@ -41,10 +41,20 @@ export default function GestionarProveedores() {
     fetchProveedores();
   }, []);
 
+  const generarSiguienteCodigoProveedor = (): string => {
+    if (proveedores.length === 0) return 'P001';
+    const numeros = proveedores.map((p) => {
+      const match = p.id_proveedor.match(/^P(\d+)$/i);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    const max = Math.max(...numeros, 0);
+    return `P${String(max + 1).padStart(3, '0')}`;
+  };
+
   const handleAddNew = () => {
-    const nextId = `P${String(proveedores.length + 1).padStart(3, '0')}`;
+    const nextId = generarSiguienteCodigoProveedor();
     setFormData({
-      id_proveedor: '',
+      id_proveedor: nextId,
       razon_social: '',
       ruc: '',
       telefono: '',
@@ -167,7 +177,7 @@ export default function GestionarProveedores() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="id_proveedor" className="block text-xs text-gray-600 mb-1">
-                  ID Proveedor
+                  Código Proveedor
                 </label>
                 <input
                   id="id_proveedor"
@@ -301,7 +311,7 @@ export default function GestionarProveedores() {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">ID</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Código</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Razón Social</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">RUC</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Teléfono</th>
@@ -314,7 +324,7 @@ export default function GestionarProveedores() {
             <tbody className="divide-y divide-gray-200">
               {proveedores.map((proveedor) => (
                 <tr key={proveedor.id_proveedor} className="hover:bg-gray-50">
-                  <td className="px-3 py-2.5 text-gray-700">{proveedor.id_proveedor}</td>
+                  <td className="px-3 py-2.5 text-gray-700 font-medium">{proveedor.id_proveedor}</td>
                   <td className="px-3 py-2.5 text-gray-900">{proveedor.razon_social}</td>
                   <td className="px-3 py-2.5 text-gray-700">{proveedor.ruc}</td>
                   <td className="px-3 py-2.5 text-gray-700">{proveedor.telefono}</td>

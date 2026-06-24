@@ -24,7 +24,7 @@ class StoreVentaRequest extends FormRequest
         'productos'                => 'required|array|min:1|max:999',
         
         // DETALLES DEL ARREGLO
-        'productos.*.id_producto'  => 'required|integer|exists:producto,id_producto',
+        'productos.*.id_producto'  => 'required|string|max:4|exists:producto,id_producto',
         
         // CANTIDAD: Rango cerrado para evitar que compren cantidades absurdas o negativas por error (mínimo 1, máximo 100 unidades)
         'productos.*.cantidad'     => 'required|integer|min:1|digits_between:1,3',

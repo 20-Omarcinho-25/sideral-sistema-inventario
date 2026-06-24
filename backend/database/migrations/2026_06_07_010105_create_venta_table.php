@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('venta', function (Blueprint $table) {
-            $table->id('id_venta');
+            $table->char('id_venta', 4)->primary();
             $table->dateTime('fecha_venta');
             $table->decimal('total', 10, 2);
             $table->string('estado', 50);
-            $table->string('nombre_cliente', 100);
-            $table->string('dni_cliente', 15);
+            $table->string('nombre_cliente', 50);
+            $table->char('dni_cliente', 8);
 
              $table->char('id_usuario', 4);
 
