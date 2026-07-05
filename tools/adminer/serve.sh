@@ -14,7 +14,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SQLITE_PATH="$(cd "$DIR/../../backend/database" 2>/dev/null && pwd)/database.sqlite"
 
-echo "Adminer:      http://localhost:8080/adminer.php"
+echo "Adminer:      http://localhost:8080/   (usa index.php: login sin contraseña habilitado)"
 echo "SQLite path:  $SQLITE_PATH"
 echo "(En Adminer: System=SQLite 3, Database=la ruta de arriba)"
 echo
