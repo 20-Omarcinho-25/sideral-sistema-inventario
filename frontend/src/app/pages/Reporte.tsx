@@ -11,16 +11,12 @@ export default function Reportes() {
     setDescargando(true);
     toast.info('Generando reporte...');
 
-    // Abrimos la ventana de forma síncrona dentro del gesto del usuario;
-    // si esperamos al await, el navegador (p. ej. en Codespaces) bloquea el popup.
-    const newWindow = window.open('', '_blank');
-
     try {
       const response = await fetch(`${API_BASE}/reportes/ventas/exportar`, {
         method: 'GET',
         headers: {
           ...getAuthHeaders(false),
-          Accept: 'text/html',
+          Accept: 'application/pdf',
         },
       });
 
@@ -29,27 +25,17 @@ export default function Reportes() {
         throw new Error(`HTTP ${response.status}. ${detalle}`.trim());
       }
 
-      const html = await response.text();
-
-      if (newWindow && !newWindow.closed) {
-        newWindow.document.open();
-        newWindow.document.write(html);
-        newWindow.document.close();
-        toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
-      } else {
-        // Popup bloqueado: descargamos el reporte como archivo HTML.
-        const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-        const enlace = document.createElement('a');
-        enlace.href = url;
-        enlace.download = 'reporte_ventas.html';
-        document.body.appendChild(enlace);
-        enlace.click();
-        enlace.remove();
-        URL.revokeObjectURL(url);
-        toast.success('Reporte descargado como archivo HTML.');
-      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'reporte_ventas.pdf';
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Reporte PDF descargado.');
     } catch (error) {
-      if (newWindow && !newWindow.closed) newWindow.close();
       console.error('Error al descargar:', error);
       const msg = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`No se pudo generar el reporte: ${msg}`);
