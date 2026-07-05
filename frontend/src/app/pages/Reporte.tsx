@@ -7,39 +7,38 @@ export default function Reportes() {
   // Estado para controlar el botón mientras Laravel genera el PDF
   const [descargando, setDescargando] = useState(false);
 
-  // Función 100% EN CALIENTE para consumir el endpoint
   const handleDescargarPDF = async () => {
     setDescargando(true);
     toast.info('Generando reporte...');
 
     try {
-      // 1. Petición HTTP GET al controlador ReporteController de Laravel
       const response = await fetch(`${API_BASE}/reportes/ventas/exportar`, {
         method: 'GET',
         headers: {
-          ...getAuthHeaders(true),
-          Accept: 'text/html',
+          ...getAuthHeaders(false),
+          Accept: 'application/pdf',
         },
       });
 
       if (!response.ok) {
-        throw new Error('Fallo en la comunicación con la Base de Datos');
+        const detalle = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}. ${detalle}`.trim());
       }
 
-      // 2. Obtener HTML y abrir en nueva ventana
-      const html = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
-        toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
-      } else {
-        toast.error('No se pudo abrir la ventana. Habilita las ventanas emergentes.');
-      }
-
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'reporte_ventas.pdf';
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Reporte PDF descargado.');
     } catch (error) {
-      console.error("Error al descargar:", error);
-      toast.error('Ocurrió un error al generar el documento. Revise la consola del servidor.');
+      console.error('Error al descargar:', error);
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`No se pudo generar el reporte: ${msg}`);
     } finally {
       setDescargando(false);
     }
