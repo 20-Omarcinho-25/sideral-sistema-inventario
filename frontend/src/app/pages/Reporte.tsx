@@ -7,39 +7,52 @@ export default function Reportes() {
   // Estado para controlar el botón mientras Laravel genera el PDF
   const [descargando, setDescargando] = useState(false);
 
-  // Función 100% EN CALIENTE para consumir el endpoint
   const handleDescargarPDF = async () => {
     setDescargando(true);
     toast.info('Generando reporte...');
 
+    // Abrimos la ventana de forma síncrona dentro del gesto del usuario;
+    // si esperamos al await, el navegador (p. ej. en Codespaces) bloquea el popup.
+    const newWindow = window.open('', '_blank');
+
     try {
-      // 1. Petición HTTP GET al controlador ReporteController de Laravel
       const response = await fetch(`${API_BASE}/reportes/ventas/exportar`, {
         method: 'GET',
         headers: {
-          ...getAuthHeaders(true),
+          ...getAuthHeaders(false),
           Accept: 'text/html',
         },
       });
 
       if (!response.ok) {
-        throw new Error('Fallo en la comunicación con la Base de Datos');
+        const detalle = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}. ${detalle}`.trim());
       }
 
-      // 2. Obtener HTML y abrir en nueva ventana
       const html = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
+
+      if (newWindow && !newWindow.closed) {
+        newWindow.document.open();
         newWindow.document.write(html);
         newWindow.document.close();
         toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
       } else {
-        toast.error('No se pudo abrir la ventana. Habilita las ventanas emergentes.');
+        // Popup bloqueado: descargamos el reporte como archivo HTML.
+        const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = 'reporte_ventas.html';
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        URL.revokeObjectURL(url);
+        toast.success('Reporte descargado como archivo HTML.');
       }
-
     } catch (error) {
-      console.error("Error al descargar:", error);
-      toast.error('Ocurrió un error al generar el documento. Revise la consola del servidor.');
+      if (newWindow && !newWindow.closed) newWindow.close();
+      console.error('Error al descargar:', error);
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`No se pudo generar el reporte: ${msg}`);
     } finally {
       setDescargando(false);
     }
