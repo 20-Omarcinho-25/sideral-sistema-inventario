@@ -95,8 +95,18 @@ Copia la URL pública que te dé (p. ej. `https://algo.trycloudflare.com`) y:
 - Vuelve a `pnpm build` el frontend tras fijar la URL.
 
 ### D) GitHub Codespaces (recomendado para pruebas académicas)
-En Codespaces el navegador NO usa `localhost`, sino las **URLs reenviadas** que
-aparecen en la pestaña **PORTS**.
+
+**Opción automática (recomendada):** el repo incluye `.devcontainer/`. Al crear
+un Codespace (o al hacer "Rebuild Container" en uno existente) se instala todo,
+se configura SQLite, se corre `migrate --seed` y se arrancan backend y frontend
+solos, con las URLs de Codespaces ya puestas en `VITE_API_URL` y CORS.
+Solo asegúrate de que los puertos **8000** y **5173** queden en visibilidad
+**Public** (pestaña PORTS) — el devcontainer lo intenta automáticamente, pero
+según la configuración de tu organización quizá debas ponerlos a mano.
+
+Si prefieres hacerlo manual, sigue los pasos de abajo. En Codespaces el navegador
+NO usa `localhost`, sino las **URLs reenviadas** que aparecen en la pestaña
+**PORTS**.
 
 **Backend (usando SQLite, sin servidor de BD):**
 ```bash

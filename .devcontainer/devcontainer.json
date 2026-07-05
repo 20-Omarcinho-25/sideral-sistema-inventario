@@ -1,0 +1,15 @@
+{
+  "name": "Sideral (Laravel + React)",
+  "image": "mcr.microsoft.com/devcontainers/php:1-8.2-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
+  "forwardPorts": [8000, 5173, 8080],
+  "portsAttributes": {
+    "8000": { "label": "backend (Laravel API)", "onAutoForward": "notify" },
+    "5173": { "label": "frontend (Vite)", "onAutoForward": "openBrowser" },
+    "8080": { "label": "Adminer (BD)", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/start.sh"
+}
