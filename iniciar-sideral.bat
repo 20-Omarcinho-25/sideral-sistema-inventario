@@ -1,0 +1,70 @@
+@echo off
+setlocal enabledelayedexpansion
+title Sideral - AIReady (PC como SERVIDOR)
+color 0B
+
+REM ============================================================
+REM  ARRANQUE DEL SISTEMA (doble clic para iniciar el servidor)
+REM  Levanta: MySQL + API Laravel (8000) + Frontend Vite (5173)
+REM  y detecta tu IP de la red (hotspot) para servir a otros equipos.
+REM ============================================================
+
+set "REPO=%~dp0"
+if "%REPO:~-1%"=="\" set "REPO=%REPO:~0,-1%"
+for %%I in ("%REPO%\..") do set "BASE=%%~fI"
+
+set "XAMPP=%BASE%\xampp"
+set "PHP=%XAMPP%\php"
+set "MYSQLBIN=%XAMPP%\mysql\bin"
+
+set "NODE="
+if exist "%BASE%\node\node.exe" set "NODE=%BASE%\node"
+if not defined NODE for /d %%D in ("%BASE%\node*") do if exist "%%D\node.exe" set "NODE=%%D"
+
+if not exist "%PHP%\php.exe" ( echo [ERROR] No se encontro PHP en "%PHP%". & pause & exit /b 1 )
+if not defined NODE ( echo [ERROR] No se encontro Node.js en "%BASE%". & pause & exit /b 1 )
+
+set "PATH=%PHP%;%NODE%;%MYSQLBIN%;%PATH%"
+
+REM --- Iniciar MySQL si no esta corriendo ---
+tasklist /fi "imagename eq mysqld.exe" | find /i "mysqld.exe" >nul
+if errorlevel 1 (
+  echo Iniciando MySQL...
+  start "MySQL" /b "%MYSQLBIN%\mysqld.exe" --defaults-file="%MYSQLBIN%\my.ini" --standalone
+  timeout /t 8 >nul
+) else (
+  echo MySQL ya esta corriendo.
+)
+
+REM --- Detectar IP de la red local (hotspot / LAN) ---
+set "LANIP="
+for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' -or $_.IPAddress -like '172.*' } ^| Select-Object -First 1 -ExpandProperty IPAddress"') do set "LANIP=%%i"
+
+if defined LANIP (
+  echo IP detectada del servidor: %LANIP%
+  > "%REPO%\frontend\.env" echo VITE_API_URL=http://%LANIP%:8000/api
+) else (
+  echo No se detecto IP de red; se usara localhost.
+  > "%REPO%\frontend\.env" echo VITE_API_URL=http://localhost:8000/api
+)
+
+REM --- Backend (API Laravel) ---
+start "Backend Laravel :8000" cmd /k "cd /d %REPO%\backend && php artisan serve --host=0.0.0.0 --port=8000"
+
+REM --- Frontend (React / Vite) ---
+start "Frontend Vite :5173" cmd /k "cd /d %REPO%\frontend && npm run dev -- --host --port 5173"
+
+timeout /t 8 >nul
+start http://localhost:5173
+
+echo.
+echo ============================================
+echo   SERVIDOR EN LINEA
+echo   Este equipo (servidor) : http://localhost:5173
+if defined LANIP echo   Otros equipos (hotspot): http://%LANIP%:5173
+echo   Usuarios: admin / Admin123!   |   vendedor / Vendedor123!
+echo.
+echo   Deja esta ventana abierta mientras uses el sistema.
+echo ============================================
+pause
+endlocal
