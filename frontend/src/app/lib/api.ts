@@ -1,5 +1,13 @@
-export const API_BASE =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+// La API se sirve en el mismo host desde el que se abrio el frontend:
+//  - en la PC servidor  -> http://localhost:8000/api
+//  - desde el celular    -> http://<IP-del-servidor>:8000/api
+// Se puede sobreescribir con VITE_API_URL en frontend/.env
+const defaultApiBase =
+  typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+    : 'http://localhost:8000/api';
+
+export const API_BASE = import.meta.env.VITE_API_URL ?? defaultApiBase;
 
 export function getAuthHeaders(includeJson = true): HeadersInit {
   const headers: Record<string, string> = {

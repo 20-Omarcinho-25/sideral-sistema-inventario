@@ -36,17 +36,12 @@ if errorlevel 1 (
   echo MySQL ya esta corriendo.
 )
 
-REM --- Detectar IP de la red local (hotspot / LAN) ---
+REM --- Detectar IP de la red local (hotspot / LAN) solo para informar ---
+REM NOTA: el frontend arma la URL de la API con el MISMO host desde el que se
+REM abre (ver frontend/src/app/lib/api.ts), asi que NO se fuerza VITE_API_URL.
+REM Asi funciona igual en localhost y desde el celular por el hotspot.
 set "LANIP="
-for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' -or $_.IPAddress -like '172.*' } ^| Select-Object -First 1 -ExpandProperty IPAddress"') do set "LANIP=%%i"
-
-if defined LANIP (
-  echo IP detectada del servidor: %LANIP%
-  > "%REPO%\frontend\.env" echo VITE_API_URL=http://%LANIP%:8000/api
-) else (
-  echo No se detecto IP de red; se usara localhost.
-  > "%REPO%\frontend\.env" echo VITE_API_URL=http://localhost:8000/api
-)
+for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } ^| Select-Object -First 1 -ExpandProperty IPAddress"') do set "LANIP=%%i"
 
 REM --- Backend (API Laravel) ---
 start "Backend Laravel :8000" cmd /k "cd /d %REPO%\backend && php artisan serve --host=0.0.0.0 --port=8000"
