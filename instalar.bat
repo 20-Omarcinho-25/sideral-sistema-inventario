@@ -49,19 +49,33 @@ if not defined NODE (
 
 set "PATH=%PHP%;%NODE%;%PATH%"
 
+REM --- Ajustar rutas internas de XAMPP portable a ESTA PC (una vez) ---
+REM Corrige rutas absolutas viejas (p.ej. de otra PC/usuario) en php.ini y demas.
+if exist "%XAMPP%\setup_xampp.bat" (
+  echo Ajustando rutas internas de XAMPP portable a esta PC...
+  pushd "%XAMPP%"
+  echo. | call setup_xampp.bat >nul 2>&1
+  popd
+)
+
 echo ============================================
-echo  Activando extensiones necesarias en php.ini...
+echo  Configurando php.ini para esta PC...
 echo ============================================
-REM Descomenta las extensiones que necesita Laravel + Composer + SQLite
+REM 1) Fija extension_dir a la carpeta ext de ESTA PC (evita rutas de otra maquina)
+REM 2) Descomenta las extensiones que necesita Laravel + Composer + SQLite
+REM 3) Desactiva browscap (evita el warning por ruta absoluta vieja)
 powershell -NoProfile -Command ^
   "$ini = Join-Path '%PHP%' 'php.ini';" ^
   "if (-not (Test-Path $ini)) { $dev = Join-Path '%PHP%' 'php.ini-development'; if (Test-Path $dev) { Copy-Item $dev $ini } };" ^
   "if (Test-Path $ini) {" ^
+  "  $extdir = (Join-Path '%PHP%' 'ext');" ^
   "  $exts = 'zip','openssl','curl','fileinfo','mbstring','pdo_sqlite','sqlite3','pdo_mysql','gd';" ^
   "  $c = Get-Content $ini;" ^
+  "  $c = $c -replace '^\s*;?\s*extension_dir\s*=.*', ('extension_dir=\"' + $extdir + '\"');" ^
+  "  $c = $c -replace '^\s*browscap\s*=.*', ';browscap=';" ^
   "  foreach ($e in $exts) { $c = $c -replace ('^\s*;\s*extension\s*=\s*' + [regex]::Escape($e) + '\s*$'), ('extension=' + $e) }" ^
   "  Set-Content $ini $c;" ^
-  "  Write-Host 'php.ini actualizado.'" ^
+  "  Write-Host ('php.ini actualizado. extension_dir=' + $extdir)" ^
   "} else { Write-Host '[ADVERTENCIA] No se encontro php.ini' }"
 
 echo.
