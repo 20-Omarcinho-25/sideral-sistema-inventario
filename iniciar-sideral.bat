@@ -5,8 +5,9 @@ color 0B
 
 REM ============================================================
 REM  ARRANQUE DEL SISTEMA (doble clic para iniciar el servidor)
-REM  Levanta: MySQL + API Laravel (8000) + Frontend Vite (5173)
-REM  y detecta tu IP de la red (hotspot) para servir a otros equipos.
+REM  Levanta: API Laravel (8000) + Frontend Vite (5173).
+REM  Base de datos: SQLite (no requiere arrancar MySQL).
+REM  Detecta tu IP de la red (hotspot) para servir a otros equipos.
 REM ============================================================
 
 set "REPO=%~dp0"
@@ -15,7 +16,6 @@ for %%I in ("%REPO%\..") do set "BASE=%%~fI"
 
 set "XAMPP=%BASE%\xampp"
 set "PHP=%XAMPP%\php"
-set "MYSQLBIN=%XAMPP%\mysql\bin"
 
 set "NODE="
 if exist "%BASE%\node\node.exe" set "NODE=%BASE%\node"
@@ -24,17 +24,7 @@ if not defined NODE for /d %%D in ("%BASE%\node*") do if exist "%%D\node.exe" se
 if not exist "%PHP%\php.exe" ( echo [ERROR] No se encontro PHP en "%PHP%". & pause & exit /b 1 )
 if not defined NODE ( echo [ERROR] No se encontro Node.js en "%BASE%". & pause & exit /b 1 )
 
-set "PATH=%PHP%;%NODE%;%MYSQLBIN%;%PATH%"
-
-REM --- Iniciar MySQL si no esta corriendo ---
-tasklist /fi "imagename eq mysqld.exe" | find /i "mysqld.exe" >nul
-if errorlevel 1 (
-  echo Iniciando MySQL...
-  start "MySQL" /b "%MYSQLBIN%\mysqld.exe" --defaults-file="%MYSQLBIN%\my.ini" --standalone
-  timeout /t 8 >nul
-) else (
-  echo MySQL ya esta corriendo.
-)
+set "PATH=%PHP%;%NODE%;%PATH%"
 
 REM --- Detectar IP de la red local (hotspot / LAN) solo para informar ---
 REM NOTA: el frontend arma la URL de la API con el MISMO host desde el que se
