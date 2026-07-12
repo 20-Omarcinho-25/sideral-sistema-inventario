@@ -47,6 +47,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/reportes/ventas/exportar', [ReporteController::class, 'exportarVentasPDF'])
         ->middleware('role:admin,vendedor');
+
+    // Persona 1 — Reporte 1: Máximo, mínimo y promedio de ventas por rango de fechas
+    Route::get('/reportes/estadisticas', [ReporteController::class, 'reporteEstadisticas'])
+        ->middleware('role:admin,vendedor');
+
+    // Persona 1 — Reporte 2: Registros eliminados lógicamente (ahora exporta PDF real)
     Route::get('/reportes/eliminados', [ReporteController::class, 'reporteEliminados'])
         ->middleware('role:admin');
+
+    // Persona 1 — Reporte 3: Tablero de indicadores de gestión (KPIs)
+    Route::get('/reportes/kpis', [ReporteController::class, 'reporteKpis'])
+        ->middleware('role:admin,vendedor');
 });

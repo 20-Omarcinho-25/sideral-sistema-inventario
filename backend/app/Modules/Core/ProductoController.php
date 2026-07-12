@@ -16,10 +16,11 @@ class ProductoController extends Controller
 
 
 
-    /** GET /api/productos — Lista todos o filtra por nombre/marca */
+    /** GET /api/productos — Lista productos activos (o filtra por nombre/marca) */
     public function index(Request $request)
 {
     $productos = Producto::with('proveedor')
+        ->where('estado', true) // No mostrar productos desactivados (eliminación lógica)
         ->when($request->filled('search'), function ($query) use ($request) {
             $q = $request->search;
             $query->where(function ($subQuery) use ($q) {
