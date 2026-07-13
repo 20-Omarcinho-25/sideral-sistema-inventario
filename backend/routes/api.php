@@ -59,4 +59,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Persona 1 — Reporte 3: Tablero de indicadores de gestión (KPIs)
     Route::get('/reportes/kpis', [ReporteController::class, 'reporteKpis'])
         ->middleware('role:admin,vendedor');
+
+        // Persona 2 — Reporte 4: Ingresos y ventas acumuladas
+Route::get('/reportes/ingresos', [ReporteController::class, 'reporteIngresos'])
+    ->middleware('role:admin,vendedor');
+
+    // Persona 2 — Reporte 5: Cumplimiento de metas trimestrales
+Route::get('/reportes/metas', [ReporteController::class, 'reporteMetas'])
+    ->middleware('role:admin,vendedor');
+
+    // Persona 2 — Reporte 6: Entregables aceptados
+Route::get('/reportes/entregables', [ReporteController::class, 'reporteEntregables'])
+    ->middleware('role:admin,vendedor');
 });

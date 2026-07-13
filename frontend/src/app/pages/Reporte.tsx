@@ -43,6 +43,55 @@ async function abrirReporteHtml(url: string): Promise<void> {
   }
 }
 
+// Descarga un archivo PDF real generado por el backend.
+async function descargarReportePdf(
+  url: string,
+  nombreArchivo: string
+): Promise<void> {
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      ...getAuthHeaders(true),
+      Accept: 'application/pdf',
+    },
+  });
+
+  if (!response.ok) {
+    let mensaje = 'No se pudo generar el reporte PDF.';
+
+    try {
+      const data = await response.json();
+      mensaje = data.message ?? mensaje;
+    } catch {
+      // La respuesta no era JSON.
+    }
+
+    throw new Error(mensaje);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (!contentType.includes('application/pdf')) {
+    throw new Error(
+      'El servidor no devolvió un archivo PDF válido.'
+    );
+  }
+
+  const archivoPdf = await response.blob();
+  const urlTemporal = window.URL.createObjectURL(archivoPdf);
+
+  const enlace = document.createElement('a');
+
+  enlace.href = urlTemporal;
+  enlace.download = nombreArchivo;
+
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+
+  window.URL.revokeObjectURL(urlTemporal);
+}
+
 export default function Reportes() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -54,6 +103,10 @@ export default function Reportes() {
       <ReporteEstadisticas />
       <ReporteEliminados />
       <ReporteKpis />
+      <ReporteIngresos />
+      <ReporteMetas />
+      <ReporteEntregables />
+
     </div>
   );
 }
@@ -278,3 +331,330 @@ function ReporteKpis() {
     </TarjetaReporte>
   );
 }
+
+/**
+* Persona 2 — Reporte 4
+* Ingresos y ventas acumuladas.
+*/
+function ReporteIngresos() {
+  const [desde, setDesde] = useState(hace30DiasISO());
+  const [hasta, setHasta] = useState(hoyISO());
+  const [descargando, setDescargando] = useState(false);
+
+  const handleDescargar = async () => {
+    if (!desde || !hasta) {
+      toast.error('Selecciona ambas fechas: Desde y Hasta.');
+      return;
+    }
+
+    if (desde > hasta) {
+      toast.error(
+        'La fecha "Desde" no puede ser posterior a la fecha "Hasta".'
+      );
+      return;
+    }
+
+    setDescargando(true);
+    toast.info('Generando reporte de ingresos...');
+
+    try {
+      const parametros = new URLSearchParams({
+        desde,
+        hasta,
+      });
+
+      await descargarReportePdf(
+        `${API_BASE}/reportes/ingresos?${parametros.toString()}`,
+        `reporte_ingresos_${desde}_${hasta}.pdf`
+      );
+
+      toast.success(
+        'Reporte de ingresos descargado correctamente.'
+      );
+    } catch (error) {
+      console.error(
+        'Error al generar reporte de ingresos:',
+        error
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Ocurrió un error al generar el reporte.'
+      );
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  return (
+    <TarjetaReporte
+      icono={<FileText size={32} />}
+      colorIcono="bg-purple-50 text-purple-600"
+      titulo="Reporte 4 — Ingresos y Ventas Acumuladas"
+      descripcion="Muestra los ingresos del periodo seleccionado. Solo considera ventas completadas y excluye ventas anuladas o en proceso."
+    >
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="ingresos-desde"
+            className="text-xs font-medium text-gray-600"
+          >
+            Desde
+          </label>
+
+          <input
+            id="ingresos-desde"
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="ingresos-hasta"
+            className="text-xs font-medium text-gray-600"
+          >
+            Hasta
+          </label>
+
+          <input
+            id="ingresos-hasta"
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDescargar}
+          disabled={descargando}
+          className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
+        >
+          <Download size={20} />
+
+          {descargando
+            ? 'Generando PDF...'
+            : 'Descargar Reporte (PDF)'}
+        </button>
+
+        {descargando && (
+          <span className="text-sm text-blue-600 flex items-center gap-2 animate-pulse">
+            <AlertCircle size={18} />
+            Operación en proceso...
+          </span>
+        )}
+      </div>
+    </TarjetaReporte>
+  );
+
+  }
+
+/**
+ * Persona 2 — Reporte 5
+ * Cumplimiento de metas trimestrales.
+ */
+function ReporteMetas() {
+  const [trimestre, setTrimestre] = useState('1');
+  const [anio, setAnio] = useState('2026');
+  const [descargando, setDescargando] = useState(false);
+
+  const handleDescargar = async () => {
+    if (!trimestre || !anio) {
+      toast.error('Selecciona el trimestre y el año.');
+      return;
+    }
+
+    const numeroAnio = Number(anio);
+
+    if (
+      Number.isNaN(numeroAnio) ||
+      numeroAnio < 2000 ||
+      numeroAnio > 2100
+    ) {
+      toast.error('Ingresa un año válido entre 2000 y 2100.');
+      return;
+    }
+
+    setDescargando(true);
+    toast.info('Generando reporte de metas trimestrales...');
+
+    try {
+      const parametros = new URLSearchParams({
+        trimestre,
+        anio,
+      });
+
+      await descargarReportePdf(
+        `${API_BASE}/reportes/metas?${parametros.toString()}`,
+        `reporte_metas_T${trimestre}_${anio}.pdf`
+      );
+
+      toast.success(
+        'Reporte de metas descargado correctamente.'
+      );
+    } catch (error) {
+      console.error(
+        'Error al generar reporte de metas:',
+        error
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Ocurrió un error al generar el reporte.'
+      );
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  return (
+    <TarjetaReporte
+      icono={<BarChart3 size={32} />}
+      colorIcono="bg-indigo-50 text-indigo-600"
+      titulo="Reporte 5 — Cumplimiento de Metas Trimestrales"
+      descripcion="Compara la meta planificada con el total vendido durante el trimestre y calcula el porcentaje de cumplimiento."
+    >
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="metas-trimestre"
+            className="text-xs font-medium text-gray-600"
+          >
+            Trimestre
+          </label>
+
+          <select
+            id="metas-trimestre"
+            value={trimestre}
+            onChange={(e) => setTrimestre(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="1">Primer trimestre</option>
+            <option value="2">Segundo trimestre</option>
+            <option value="3">Tercer trimestre</option>
+            <option value="4">Cuarto trimestre</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="metas-anio"
+            className="text-xs font-medium text-gray-600"
+          >
+            Año
+          </label>
+
+          <input
+            id="metas-anio"
+            type="number"
+            min="2000"
+            max="2100"
+            value={anio}
+            onChange={(e) => setAnio(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-28"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDescargar}
+          disabled={descargando}
+          className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
+        >
+          <Download size={20} />
+
+          {descargando
+            ? 'Generando PDF...'
+            : 'Descargar Reporte (PDF)'}
+        </button>
+
+        {descargando && (
+          <span className="text-sm text-blue-600 flex items-center gap-2 animate-pulse">
+            <AlertCircle size={18} />
+            Operación en proceso...
+          </span>
+        )}
+      </div>
+    </TarjetaReporte>
+  );
+  }
+
+  /**
+ * Persona 2 — Reporte 6
+ * Volumen de entregables aceptados.
+ */
+function ReporteEntregables() {
+  const [descargando, setDescargando] = useState(false);
+
+  const handleDescargar = async () => {
+    setDescargando(true);
+    toast.info('Generando reporte de entregables aceptados...');
+
+    try {
+      await descargarReportePdf(
+        `${API_BASE}/reportes/entregables`,
+        'reporte_entregables.pdf'
+      );
+
+      toast.success(
+        'Reporte de entregables descargado correctamente.'
+      );
+    } catch (error) {
+      console.error(
+        'Error al generar reporte de entregables:',
+        error
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Ocurrió un error al generar el reporte.'
+      );
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  return (
+    <TarjetaReporte
+      icono={<FileText size={32} />}
+      colorIcono="bg-cyan-50 text-cyan-700"
+      titulo="Reporte 6 — Entregables Aceptados"
+      descripcion="Muestra los entregables activos que fueron aceptados y calcula el porcentaje de avance físico del proyecto."
+    >
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={handleDescargar}
+          disabled={descargando}
+          className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
+        >
+          <Download size={20} />
+
+          {descargando
+            ? 'Generando PDF...'
+            : 'Descargar Reporte (PDF)'}
+        </button>
+
+        {descargando && (
+          <span className="text-sm text-blue-600 flex items-center gap-2 animate-pulse">
+            <AlertCircle size={18} />
+            Operación en proceso...
+          </span>
+        )}
+      </div>
+    </TarjetaReporte>
+  );
+}
+
+  
+
+
+
+

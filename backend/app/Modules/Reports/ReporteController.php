@@ -12,6 +12,9 @@ use App\Models\ConsultaStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\MetaTrimestral;
+use App\Models\Entregable;
 
 class ReporteController extends Controller
 {
@@ -140,6 +143,254 @@ class ReporteController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al generar tablero de indicadores: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+        /**
+     * Reporte 4 — GET /api/reportes/ingresos
+     *
+     * Muestra los ingresos y ventas acumuladas.
+     * Solo considera ventas con estado "Completada".
+     * Excluye ventas "Anulada" y "En proceso".
+     *
+     * Parámetros opcionales:
+     * desde=YYYY-MM-DD
+     * hasta=YYYY-MM-DD
+     */
+    public function reporteIngresos(Request $request)
+    {
+        $request->validate([
+            'desde' => 'nullable|date|required_with:hasta',
+            'hasta' => 'nullable|date|required_with:desde|after_or_equal:desde',
+        ]);
+
+        try {
+            // Regla principal:
+            // únicamente se consideran ventas completadas.
+            $consulta = Venta::where('estado', 'Completada');
+
+            $desde = null;
+            $hasta = null;
+
+            // Si el usuario seleccionó ambas fechas, se aplica el filtro.
+            if ($request->filled('desde') && $request->filled('hasta')) {
+                $desde = Carbon::parse($request->desde)->startOfDay();
+                $hasta = Carbon::parse($request->hasta)->endOfDay();
+
+                $consulta->whereBetween('fecha_venta', [$desde, $hasta]);
+            }
+
+            // Detalle de las ventas completadas.
+            $ventas = $consulta
+                ->orderBy('fecha_venta', 'asc')
+                ->get();
+
+            // Datos generales.
+            $numeroVentas = $ventas->count();
+            $totalIngresos = (float) $ventas->sum('total');
+
+            // Agrupación de ingresos por día.
+            $ingresosPorDia = $ventas
+                ->groupBy(function ($venta) {
+                    return Carbon::parse($venta->fecha_venta)
+                        ->format('Y-m-d');
+                })
+                ->map(function ($ventasDelDia, $fecha) {
+                    return [
+                        'fecha' => $fecha,
+                        'cantidad_ventas' => $ventasDelDia->count(),
+                        'ingresos_dia' => (float) $ventasDelDia->sum('total'),
+                    ];
+                })
+                ->values();
+
+            // Texto que aparecerá en el PDF.
+            $periodo = [
+                'desde' => $desde
+                    ? $desde->format('d/m/Y')
+                    : null,
+
+                'hasta' => $hasta
+                    ? $hasta->format('d/m/Y')
+                    : null,
+            ];
+
+            return Pdf::loadView(
+                'reportes.ingresos',
+                compact(
+                    'ventas',
+                    'numeroVentas',
+                    'totalIngresos',
+                    'ingresosPorDia',
+                    'periodo'
+                )
+            )
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_ingresos.pdf');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' =>
+                    'Error al generar el reporte de ingresos: '
+                    . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Reporte 5 — GET /api/reportes/metas
+     *
+     * Compara la meta planificada contra las ventas completadas
+     * de un trimestre y calcula el porcentaje de cumplimiento.
+     *
+     * Parámetros:
+     * trimestre = 1, 2, 3 o 4
+     * anio = año que se desea evaluar
+     */
+    public function reporteMetas(Request $request)
+    {
+        $request->validate([
+            'trimestre' => 'required|integer|between:1,4',
+            'anio' => 'required|integer|between:2000,2100',
+        ]);
+
+        try {
+            $trimestre = (int) $request->trimestre;
+            $anio = (int) $request->anio;
+
+            // Calcula el primer mes del trimestre:
+            // T1 = enero, T2 = abril, T3 = julio, T4 = octubre.
+            $mesInicial = (($trimestre - 1) * 3) + 1;
+
+            $desde = Carbon::create(
+                $anio,
+                $mesInicial,
+                1
+            )->startOfDay();
+
+            $hasta = $desde
+                ->copy()
+                ->addMonths(3)
+                ->subSecond();
+
+            // Busca la meta activa del trimestre seleccionado.
+            $meta = MetaTrimestral::where('estado', true)
+                ->where('trimestre', $trimestre)
+                ->where('anio', $anio)
+                ->first();
+
+            if (!$meta) {
+                return response()->json([
+                    'message' =>
+                        'No existe una meta activa para el trimestre y año seleccionados.',
+                ], 404);
+            }
+
+            // Solo se consideran ventas completadas.
+            $consultaVentas = Venta::where('estado', 'Completada')
+                ->whereBetween('fecha_venta', [$desde, $hasta]);
+
+            $cantidadVentas = (clone $consultaVentas)->count();
+
+            $logrado = (float) (clone $consultaVentas)
+                ->sum('total');
+
+            $metaPlanificada = (float) $meta->meta_planificada;
+
+            // Evita división entre cero.
+            $avance = $metaPlanificada > 0
+                ? round(
+                    ($logrado / $metaPlanificada) * 100,
+                    1
+                )
+                : 0;
+
+            $estadoCumplimiento = $avance >= 100
+                ? 'Cumplido'
+                : 'En riesgo';
+
+            $diferencia = round(
+                $logrado - $metaPlanificada,
+                2
+            );
+
+            return Pdf::loadView(
+                'reportes.metas',
+                compact(
+                    'meta',
+                    'trimestre',
+                    'anio',
+                    'desde',
+                    'hasta',
+                    'cantidadVentas',
+                    'metaPlanificada',
+                    'logrado',
+                    'diferencia',
+                    'avance',
+                    'estadoCumplimiento'
+                )
+            )
+                ->setPaper('a4', 'portrait')
+                ->download(
+                    "reporte_metas_T{$trimestre}_{$anio}.pdf"
+                );
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' =>
+                    'Error al generar el reporte de metas: '
+                    . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Reporte 6 — Volumen de Entregables Aceptados.
+     *
+     * Calcula el avance físico del proyecto usando únicamente
+     * entregables activos y muestra los que fueron aceptados.
+     */
+    public function reporteEntregables()
+    {
+        try {
+            // Todos los entregables activos forman parte del total.
+            $total = Entregable::where('estado', true)->count();
+
+            // Solo se muestran los entregables activos y aceptados.
+            $aceptados = Entregable::where('estado', true)
+                ->where('aceptado', true)
+                ->orderBy('fecha_aceptacion', 'asc')
+                ->get();
+
+            $cantidadAceptados = $aceptados->count();
+
+            // Evita división entre cero si no existen entregables activos.
+            $avance = $total > 0
+                ? round(($cantidadAceptados / $total) * 100, 1)
+                : 0;
+
+            return Pdf::loadView(
+                'reportes.entregables',
+                compact(
+                    'aceptados',
+                    'cantidadAceptados',
+                    'total',
+                    'avance'
+                )
+            )
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_entregables.pdf');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' =>
+                    'Error al generar el reporte de entregables: '
+                    . $e->getMessage(),
             ], 500);
         }
     }
