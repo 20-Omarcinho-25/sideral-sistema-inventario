@@ -608,8 +608,9 @@ function ReporteMetas() {
       </div>
     </TarjetaReporte>
   );
+}
 
-  /**
+/**
  * Persona 2 — Reporte 6
  * Volumen de entregables aceptados.
  */
