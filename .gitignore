@@ -1,0 +1,30 @@
+# ==========================================
+# Archivos de configuración del IDE (Visual Studio / VS Code)
+# ==========================================
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ==========================================
+# Dependencias y paquetes compilados (Node / PHP / Java)
+# ==========================================
+node_modules/
+vendor/
+target/
+*.class
+
+# ==========================================
+# Archivos del sistema operativo y logs
+# ==========================================
+Thumbs.db
+.DS_Store
+*.log
+
+# ==========================================
+# Archivos con credenciales sensibles (¡Seguridad!)
+# ==========================================
+.env
+config/claves.json
