@@ -1,0 +1,17 @@
+# 1. Ignorar absolutamente todo en la raíz por defecto
+/*
+
+# 2. Excepciones: Permitir que Cursor analice estas dos carpetas
+!/frontend/
+!/backend/
+
+# 3. Ignorar carpetas ultra pesadas dentro del frontend y backend 
+# (Esto es vital para no consumir recursos indexando librerías)
+/frontend/node_modules/
+/backend/vendor/
+/backend/node_modules/
+
+# 4. (Opcional) Ignorar archivos compilados o temporales
+/backend/storage/
+/frontend/dist/
+/frontend/build/
