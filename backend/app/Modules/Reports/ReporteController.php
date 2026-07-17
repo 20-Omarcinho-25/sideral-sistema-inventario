@@ -18,7 +18,7 @@ use App\Models\Entregable;
 
 class ReporteController extends Controller
 {
-    /** GET /api/reportes/ventas/exportar — Exportación en HTML (Alternativa a PDF) */
+    /** GET /api/reportes/ventas/exportar — Exportación en PDF con DomPDF */
     public function exportarVentasPDF()
     {
         try {
@@ -26,9 +26,9 @@ class ReporteController extends Controller
                 ->take(100)
                 ->get();
 
-            return response()->view('pdf_ventas', compact('ventas'))
-                ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'inline; filename="reporte_ventas.html"');
+            return Pdf::loadView('pdf_ventas', compact('ventas'))
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_ventas.pdf');
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error al generar reporte: ' . $e->getMessage()], 500);
         }
@@ -38,11 +38,7 @@ class ReporteController extends Controller
      * Reporte 1 — GET /api/reportes/estadisticas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
      * Máximo, mínimo y promedio del total vendido en un rango de fechas,
      * considerando únicamente ventas con estado "Completada".
-     *
-     * Se abre como página HTML en pestaña nueva (mismo patrón que
-     * exportarVentasPDF), y el propio filtro de fechas vive dentro de esa
-     * página: al cambiar las fechas y presionar "Actualizar", la página
-     * vuelve a pedirse a sí misma con los nuevos parámetros.
+     * Genera PDF directamente con DomPDF.
      */
     public function reporteEstadisticas(Request $request)
     {
@@ -67,15 +63,9 @@ class ReporteController extends Controller
                 'promedio' => round((clone $query)->avg('total') ?? 0, 2),
             ];
 
-            // Token del usuario autenticado y URL base de la API: se reutilizan
-            // dentro de la página para que el botón "Actualizar" pueda volver
-            // a llamar a este mismo endpoint sin salir de la pestaña.
-            $token = $request->bearerToken();
-            $apiBase = $request->getSchemeAndHttpHost() . '/api';
-
-            return response()->view('reportes.estadisticas', compact('ventas', 'resumen', 'desde', 'hasta', 'token', 'apiBase'))
-                ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'inline; filename="reporte_estadistico.html"');
+            return Pdf::loadView('reportes.pdf_estadisticas', compact('ventas', 'resumen', 'desde', 'hasta'))
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_estadistico.pdf');
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al generar reporte estadístico: ' . $e->getMessage()
@@ -86,8 +76,7 @@ class ReporteController extends Controller
     /**
      * Reporte 2 — GET /api/reportes/eliminados
      * Historial de registros con eliminación lógica (estado = false)
-     * en producto, usuario y proveedor. Se abre como página HTML
-     * (mismo patrón que el Reporte Histórico de Ventas).
+     * en producto, usuario y proveedor. Genera PDF directamente con DomPDF.
      */
     public function reporteEliminados()
     {
@@ -104,9 +93,9 @@ class ReporteController extends Controller
                 ->select('id_proveedor', 'razon_social', 'ruc', 'telefono', 'correo')
                 ->get();
 
-            return response()->view('reportes.eliminados', compact('productos', 'usuarios', 'proveedores'))
-                ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'inline; filename="reporte_eliminados.html"');
+            return Pdf::loadView('reportes.pdf_eliminados', compact('productos', 'usuarios', 'proveedores'))
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_eliminados.pdf');
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al generar reporte de eliminados: ' . $e->getMessage()
@@ -117,7 +106,7 @@ class ReporteController extends Controller
     /**
      * Reporte 3 — GET /api/reportes/kpis?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
      * Tablero con los 4 indicadores de gestión del Capítulo 1 (sección 1.2.2).
-     * Se abre como página HTML (mismo patrón que el Reporte Histórico de Ventas).
+     * Genera PDF directamente con DomPDF.
      */
     public function reporteKpis(Request $request)
     {
@@ -137,9 +126,9 @@ class ReporteController extends Controller
                 $this->calcularTvces($desde, $hasta),
             ];
 
-            return response()->view('reportes.kpis', compact('kpis', 'desde', 'hasta'))
-                ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'inline; filename="reporte_kpis.html"');
+            return Pdf::loadView('reportes.pdf_kpis', compact('kpis', 'desde', 'hasta'))
+                ->setPaper('a4', 'portrait')
+                ->download('reporte_kpis.pdf');
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al generar tablero de indicadores: ' . $e->getMessage()
@@ -219,7 +208,7 @@ class ReporteController extends Controller
             ];
 
             return Pdf::loadView(
-                'reportes.ingresos',
+                'reportes.pdf_ingresos',
                 compact(
                     'ventas',
                     'numeroVentas',

@@ -139,16 +139,16 @@ function TarjetaReporte({
   );
 }
 
-/** Reporte histórico de ventas (funcionalidad base existente, sin cambios) */
+/** Reporte histórico de ventas */
 function ReporteHistoricoVentas() {
   const [descargando, setDescargando] = useState(false);
 
   const handleDescargarPDF = async () => {
     setDescargando(true);
-    toast.info('Generando reporte...');
+    toast.info('Generando reporte PDF...');
     try {
-      await abrirReporteHtml(`${API_BASE}/reportes/ventas/exportar`);
-      toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
+      await descargarReportePdf(`${API_BASE}/reportes/ventas/exportar`, 'reporte_ventas.pdf');
+      toast.success('Reporte PDF descargado correctamente.');
     } catch (error) {
       console.error('Error al descargar:', error);
       toast.error(error instanceof Error ? error.message : 'Ocurrió un error al generar el documento.');
@@ -185,21 +185,22 @@ function ReporteHistoricoVentas() {
 
 /**
  * Reporte 1 — Máximo, mínimo y promedio de ventas.
- * El filtro de fechas ya NO vive aquí: se abre la página con un rango por
- * defecto (últimos 30 días) y, dentro de esa misma página, el usuario puede
- * cambiar las fechas y volver a generarlo sin salir de la pestaña.
+ * Descarga PDF directamente con rango de fechas (últimos 30 días por defecto).
  */
 function ReporteEstadisticas() {
   const [descargando, setDescargando] = useState(false);
+  const [desde, setDesde] = useState(hace30DiasISO());
+  const [hasta, setHasta] = useState(hoyISO());
 
-  const handleAbrir = async () => {
+  const handleDescargar = async () => {
     setDescargando(true);
-    toast.info('Generando reporte estadístico...');
+    toast.info('Generando reporte PDF...');
     try {
-      const desde = hace30DiasISO();
-      const hasta = hoyISO();
-      await abrirReporteHtml(`${API_BASE}/reportes/estadisticas?desde=${desde}&hasta=${hasta}`);
-      toast.success('Reporte generado. Puedes cambiar las fechas dentro de la misma página.');
+      await descargarReportePdf(
+        `${API_BASE}/reportes/estadisticas?desde=${desde}&hasta=${hasta}`,
+        `reporte_estadistico_${desde}_${hasta}.pdf`
+      );
+      toast.success('Reporte PDF descargado correctamente.');
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : 'Error al generar el reporte.');
@@ -212,17 +213,39 @@ function ReporteEstadisticas() {
     <TarjetaReporte
       icono={<BarChart3 size={32} />}
       colorIcono="bg-blue-50 text-blue-600"
-      titulo="Reporte  Estadístico de Ventas (Máx / Mín / Promedio)"
+      titulo="Reporte Estadístico de Ventas (Máx / Mín / Promedio)"
       descripcion="Calcula el valor máximo, mínimo y promedio del total. "
     >
-      <button
-        onClick={handleAbrir}
-        disabled={descargando}
-        className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
-      >
-        <Download size={20} />
-        {descargando ? 'Generando...' : 'Descargar Reporte (PDF)'}
-      </button>
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="stats-desde" className="text-xs font-medium text-gray-600">Desde</label>
+          <input
+            id="stats-desde"
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="stats-hasta" className="text-xs font-medium text-gray-600">Hasta</label>
+          <input
+            id="stats-hasta"
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          onClick={handleDescargar}
+          disabled={descargando}
+          className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
+        >
+          <Download size={20} />
+          {descargando ? 'Generando PDF...' : 'Descargar Reporte (PDF)'}
+        </button>
+      </div>
     </TarjetaReporte>
   );
 }
@@ -231,12 +254,12 @@ function ReporteEstadisticas() {
 function ReporteEliminados() {
   const [descargando, setDescargando] = useState(false);
 
-  const handleAbrir = async () => {
+  const handleDescargar = async () => {
     setDescargando(true);
-    toast.info('Generando reporte de eliminados...');
+    toast.info('Generando reporte PDF...');
     try {
-      await abrirReporteHtml(`${API_BASE}/reportes/eliminados`);
-      toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
+      await descargarReportePdf(`${API_BASE}/reportes/eliminados`, 'reporte_eliminados.pdf');
+      toast.success('Reporte PDF descargado correctamente.');
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : 'Error al generar el reporte.');
@@ -249,16 +272,16 @@ function ReporteEliminados() {
     <TarjetaReporte
       icono={<Trash2 size={32} />}
       colorIcono="bg-amber-50 text-amber-600"
-      titulo="Reporte  Registros Eliminados"
-      descripcion="Historial de productos, usuarios y proveedores Desactivados."
+      titulo="Reporte de Registros Eliminados"
+      descripcion="Historial de productos, usuarios y proveedores desactivados."
     >
       <button
-        onClick={handleAbrir}
+        onClick={handleDescargar}
         disabled={descargando}
         className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
       >
         <Download size={20} />
-        {descargando ? 'Generando...' : 'Descargar Reporte (PDF)'}
+        {descargando ? 'Generando PDF...' : 'Descargar Reporte (PDF)'}
       </button>
     </TarjetaReporte>
   );
@@ -270,7 +293,7 @@ function ReporteKpis() {
   const [hasta, setHasta] = useState(hoyISO());
   const [descargando, setDescargando] = useState(false);
 
-  const handleAbrir = async () => {
+  const handleDescargar = async () => {
     if (!desde || !hasta) {
       toast.error('Selecciona ambas fechas (Desde y Hasta).');
       return;
@@ -281,10 +304,13 @@ function ReporteKpis() {
     }
 
     setDescargando(true);
-    toast.info('Generando tablero de indicadores...');
+    toast.info('Generando reporte PDF...');
     try {
-      await abrirReporteHtml(`${API_BASE}/reportes/kpis?desde=${desde}&hasta=${hasta}`);
-      toast.success('Reporte generado. Usa Ctrl+P para guardar como PDF.');
+      await descargarReportePdf(
+        `${API_BASE}/reportes/kpis?desde=${desde}&hasta=${hasta}`,
+        `reporte_kpis_${desde}_${hasta}.pdf`
+      );
+      toast.success('Reporte PDF descargado correctamente.');
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : 'Error al generar el reporte.');
@@ -297,8 +323,8 @@ function ReporteKpis() {
     <TarjetaReporte
       icono={<Gauge size={32} />}
       colorIcono="bg-emerald-50 text-emerald-600"
-      titulo="Reporte  Tablero de Indicadores "
-      descripcion="Calcula los indicadores Índice de Renovación y Tasa de Pedidos Anulados por Error de Stock."
+      titulo="Reporte de Indicadores (KPIs)"
+      descripcion="Calcula los indicadores: ERI, TPVS, Renovación de Mercancía y TVCES."
     >
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
@@ -320,12 +346,12 @@ function ReporteKpis() {
           />
         </div>
         <button
-          onClick={handleAbrir}
+          onClick={handleDescargar}
           disabled={descargando}
           className="flex items-center gap-2 bg-[#1e6b3e] text-white px-6 py-2.5 rounded-lg font-medium hover:bg-[#155430] disabled:bg-gray-400 transition-all shadow-sm"
         >
           <Download size={20} />
-          {descargando ? 'Generando...' : 'Descargar Reporte (PDF)'}
+          {descargando ? 'Generando PDF...' : 'Descargar Reporte (PDF)'}
         </button>
       </div>
     </TarjetaReporte>
@@ -451,8 +477,7 @@ function ReporteIngresos() {
       </div>
     </TarjetaReporte>
   );
-
-  }
+}
 
 /**
  * Persona 2 — Reporte 5
@@ -583,7 +608,6 @@ function ReporteMetas() {
       </div>
     </TarjetaReporte>
   );
-  }
 
   /**
  * Persona 2 — Reporte 6
